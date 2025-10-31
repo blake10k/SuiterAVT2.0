@@ -1,0 +1,3146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Analytics & Visualizations</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Plotly.js for charting -->
+  <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+  <!-- xlsx.js for Excel file reading -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <!-- PapaParse for CSV file reading -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  
+  <!-- --- ADDED EXTERNAL STATISTICAL LIBRARIES --- -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/simple-statistics/7.8.3/simple-statistics.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jstat/1.9.3/jstat.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/regression.js/2.0.1/regression.min.js"></script>
+  <!-- ----------------------------------------- -->
+
+  <style>
+    body {
+      /* Use a modern, clean font and very light background */
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+        Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+        "Segoe UI Symbol";
+      background-color: #f1f5f9; /* slate-100 */
+    }
+    
+    /* Custom Scrollbar for a sleek look */
+    #chat-history::-webkit-scrollbar,
+    #canvas-panel::-webkit-scrollbar {
+      width: 8px;
+    }
+    #chat-history::-webkit-scrollbar-thumb,
+    #canvas-panel::-webkit-scrollbar-thumb {
+      background-color: #cbd5e1; /* slate-300 */
+      border-radius: 4px;
+    }
+    #chat-history::-webkit-scrollbar-thumb:hover,
+    #canvas-panel::-webkit-scrollbar-thumb:hover {
+      background-color: #94a3b8; /* slate-400 */
+    } 
+    #chat-history::-webkit-scrollbar-track {
+      background-color: transparent;
+    }
+    
+    /* User message: Deep blue, rounded, pronounced shadow */
+    .user-msg {
+      @apply bg-blue-700 text-white shadow-xl rounded-2xl rounded-tr-none;
+    }
+    
+    /* Bot message: Clean white card, subtle blue border, soft shadow */
+    .bot-msg {
+      @apply bg-white text-gray-800 border border-blue-100 shadow-lg rounded-2xl rounded-tl-none;
+    }
+    
+    /* Base message styling: Refined size and padding */
+    .message {
+      @apply py-3.5 px-5 max-w-lg md:max-w-md lg:max-w-xl break-words leading-relaxed text-sm;
+    }
+    
+    /* Loading message specific style */
+    .loading-msg {
+      @apply bg-white text-gray-500 border border-blue-100 shadow-sm rounded-2xl rounded-tl-none;
+    }
+    
+    /* Pulsing dot animation for loading */
+    .dot-pulse {
+      position: relative;
+      left: -9999px;
+      width: 10px;
+      height: 10px;
+      border-radius: 5px;
+      background-color: #64748b; /* slate-500 */
+      color: #64748b;
+      box-shadow: 9999px 0 0 -5px;
+      animation: dot-pulse 1.5s infinite linear;
+      animation-delay: 0.25s;
+    }
+    .dot-pulse::before,
+    .dot-pulse::after {
+      content: "";
+      display: inline-block;
+      position: absolute;
+      top: 0;
+      width: 10px;
+      height: 10px;
+      border-radius: 5px;
+      background-color: #64748b;
+      color: #64748b;
+    }
+    .dot-pulse::before {
+      box-shadow: 9984px 0 0 -5px;
+      animation: dot-pulse-before 1.5s infinite linear;
+      animation-delay: 0s;
+    }
+    @keyframes dot-pulse-before {
+      0% { box-shadow: 9984px 0 0 -5px; }
+      30% { box-shadow: 9984px 0 0 2px; }
+      60%, 100% { box-shadow: 9984px 0 0 -5px; }
+    }
+    @keyframes dot-pulse {
+      0% { box-shadow: 9999px 0 0 -5px; }
+      30% { box-shadow: 9999px 0 0 2px; }
+      60%, 100% { box-shadow: 9999px 0 0 -5px; }
+    }
+    @keyframes dot-pulse-after {
+      0% { box-shadow: 10014px 0 0 -5px; }
+      30% { box-shadow: 10014px 0 0 2px; }
+      60%, 100% { box-shadow: 10014px 0 0 -5px; }
+    }
+  </style>
+</head>
+
+<body class="h-screen flex flex-col antialiased bg-slate-100">
+  <!-- Header: Sleek, high-contrast bar -->
+  <header class="bg-white py-4 px-6 shadow-xl z-10 border-b border-gray-100 flex justify-between items-center">
+    <div class="flex items-center space-x-3">
+      <!-- Icon -->
+      <svg class="w-8 h-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M6 20.25h12A2.25 2.25 0 0 0 20.25 18V6A2.25 2.25 0 0 0 18 3.75H6A2.25 2.25 0 0 0 3.75 6v12A2.25 2.25 0 0 0 6 20.25Z" />
+      </svg>
+      <!-- UPDATED TITLE -->
+      <h1 class="text-2xl font-bold text-blue-600 tracking-tight">AI Analytics & Visualizations</h1>
+    </div>
+    <div class="flex items-center space-x-4">
+      <!-- UPDATED FILE NAME TEXT -->
+      <span id="file-name" class="text-base text-gray-500 hidden md:block font-medium">No file uploaded</span>
+      
+      <!-- Mode Toggle Button (NEW) -->
+      <button id="mode-toggle" class="px-3 py-1.5 rounded-full text-sm font-semibold transition-colors duration-200 shadow-md flex items-center space-x-2" disabled>
+        <svg id="mode-icon" class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <!-- Default icon for analysis mode -->
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
+        </svg>
+        <span id="mode-text">Analysis Mode</span>
+      </button>
+
+      <!-- Upload Button: Prominent, heavily rounded, lift on hover -->
+      <button id="upload-btn" class="text-base bg-blue-600 text-white px-5 py-2.5 rounded-full hover:bg-blue-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl flex items-center space-x-2">
+        <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0 3 3m-3-3-3 3M6.75 19.5a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.233-2.33 3 3 0 0 1 3.758 3.848A3.752 3.752 0 0 1 18 19.5H6.75Z" />
+        </svg>
+        <span>Upload Data</span>
+      </button>
+    </div>
+    <input type="file" id="file-input" accept=".csv,.xlsx,.xls" class="hidden" />
+  </header>
+
+  <!-- Main Split Layout: Stacks on mobile, row on desktop -->
+  <main class="flex flex-col md:flex-row flex-1 overflow-hidden">
+    <!-- Left Chat Panel: Clean white card style -->
+    <section id="chat-panel" class="w-full md:w-2/5 lg:w-1/3 flex flex-col bg-white shadow-2xl h-3/5 md:h-full relative z-[5]">
+      <div id="chat-history" class="flex-1 overflow-y-auto p-6 flex flex-col space-y-4">
+        <!-- Initial welcome message (UPDATED) -->
+        <div class="w-full flex justify-start items-start space-x-2.5">
+          <div class="flex-shrink-0">
+            <!-- UPDATED AI ICON -->
+            <svg class="w-8 h-8 text-white bg-blue-600 rounded-full p-1.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM18 12.75l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 18l-1.035.259a3.375 3.375 0 0 0-2.456 2.456L18 21.75l-.259-1.035a3.375 3.375 0 0 0-2.456-2.456L14.25 18l1.035-.259a3.375 3.375 0 0 0 2.456-2.456L18 12.75Z" />
+            </svg>
+          </div>
+          <div class="message bot-msg">
+            Hello! I'm your AI Data Analyst. Upload a CSV or Excel file to get started. For the best insights, try prompts like: 
+            <ul class="list-disc ml-6 mt-2 space-y-1">
+              <li>"Find the correlation between <strong>Age</strong> and <strong>Income</strong>"</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Input: Integrated bar -->
+      <div class="border-t border-gray-200 p-4 bg-white">
+        <div class="flex items-center space-x-3">
+          <!-- Input Field: Fully rounded, soft blue background -->
+          <input id="chat-input" type="text" placeholder="e.g., 'Show me a distribution of profit'"
+            class="flex-1 bg-blue-50 border border-blue-200/50 rounded-full px-5 py-3 text-base text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200" disabled>
+          <!-- Send Button: Fully rounded, large touch target -->
+          <button id="send-btn"
+            class="bg-blue-600 text-white rounded-full p-3.5 shadow-lg hover:bg-blue-700 transition-colors duration-200 disabled:bg-gray-300 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2" disabled>
+             <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L6 12Z" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Visualization Panel: Light background for contrast -->
+    <section id="canvas-panel" class="flex-1 bg-slate-100 p-6 md:p-8 overflow-auto h-2/5 md:h-full">
+      <!-- Data Card: Floating, heavily rounded, soft shadow -->
+      <div class="text-gray-700 bg-white p-8 rounded-3xl shadow-2xl border border-gray-100 min-h-full">
+        
+        <div id="analysis-content">
+          <!-- New Placeholder: Minimalist and informative -->
+          <div id="placeholder" class="flex flex-col items-center justify-center h-full text-gray-400 min-h-[400px]">
+            <svg class="w-24 h-24 mb-6 text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
+            </svg>
+            <h3 class="text-xl font-bold text-gray-600">Welcome to AI Analytics & Visualizations</h3>
+            <p class="text-base text-gray-500 mt-2 text-center">To begin, click **Upload Data** above and chat with me to get instant analysis!</p>
+          </div>
+        </div>
+        
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // --- Global State ---
+    let dataset = null; 
+    let columnInfo = {
+      headers: [],
+      numeric: [],
+      categorical: []
+    };
+    let currentPlotConfig = null;
+    
+    // --- UI Element Declarations (FIXED: Declared here to prevent redeclaration errors) ---
+    let modeToggleBtn, modeIcon, modeText;
+    let chatHistory, chatInput, sendBtn, analysisOutput;
+    let fileInput, uploadBtn, fileNameEl, placeholder;
+
+    // --- CONTEXTUAL STATE & MODE MANAGER (NEW) ---
+    let lastBotAction = null; 
+    let lastTestType = null;
+    let lastUserQuery = null;
+    let currentMode = null; // New state: 'analysis', 'visualization', or null
+    // --- END CONTEXTUAL STATE & MODE MANAGER ---
+
+    // --- Gemini API Configuration ---
+    const apiKey = ""; 
+    const apiModel = "gemini-2.5-flash-preview-09-2025";
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${apiModel}:generateContent?key=${apiKey}`;
+    
+    // Define the JSON schema the AI must follow (UPDATED with new tests)
+    const jsonSchema = {
+      "type": "OBJECT",
+      "properties": {
+        "action": {
+          "type": "STRING",
+          "enum": ["plot", "summarize", "answer", "clarify", "error", "edit_plot", "test"]
+        },
+        "plotConfig": {
+          "type": "OBJECT",
+          "description": "Configuration for plotting, required if action is 'plot'",
+          "properties": {
+            "plotType": {
+              "type": "STRING",
+              "enum": ["scatter", "bar", "histogram", "pie", "boxplot", "line", "density", "violin", "bubble", "heatmap", "treemap", "sankey", "funnel", "qq", "dotplot", "pareto", "kaplan_meier_curve", "roc_curve"]
+            },
+            "title": { "type": "STRING", "description": "A descriptive title for the plot." },
+            "xColumn": { "type": "STRING", "description": "Column for the X-axis or primary category." },
+            "yColumn": { "type": "STRING", "description": "Column for the Y-axis or primary value." },
+            "zColumn": { "type": "STRING", "description": "Column for the Z-axis, size, or secondary value (used for bubble, heatmap, sankey)." },
+            "xAxisTitle": { "type": "STRING", "description": "A title for the X-axis (optional)." },
+            "yAxisTitle": { "type": "STRING", "description": "A title for the Y-axis (optional)." },
+            "color": { "type": "STRING", "description": "A hex color code (e.g., '#FF0000') for the main plot element (optional)." }
+          }
+        },
+        "summaryConfig": {
+          "type": "OBJECT",
+          "description": "Configuration for summary, required if action is 'summarize'",
+          "properties": {
+            "columns": {
+              "type": "ARRAY",
+              "description": "List of numeric column names to summarize. Must exist in the numeric columns list.",
+              "items": { "type": "STRING" }
+            },
+            "title": { "type": "STRING", "description": "A descriptive title for the summary table." }
+          }
+        },
+        "editConfig": {
+          "type": "OBJECT",
+          "description": "Configuration for editing, required if action is 'edit_plot'. Contains ONLY the properties to change.",
+          "properties": {
+            "plotType": { "type": "STRING", "enum": ["scatter", "bar", "histogram", "pie", "boxplot", "line", "density", "violin", "bubble", "heatmap", "treemap", "sankey", "funnel"] },
+            "xColumn": { "type": "STRING" },
+            "yColumn": { "type": "STRING" },
+            "zColumn": { "type": "STRING" },
+            "title": { "type": "STRING" },
+            "xAxisTitle": { "type": "STRING" },
+            "yAxisTitle": { "type": "STRING" },
+            "color": { "type": "STRING" }
+          }
+        },
+        "testConfig": {
+          "type": "OBJECT",
+          "description": "Configuration for running a statistical test, required if action is 'test'",
+          "properties": {
+            "testType": {
+              "type": "STRING",
+              // REMOVED: anova_repeated_measures, tukey_hsd, confirmatory_factor_analysis
+              "enum": ["descriptive", "shapiro_wilk", "levenes_test", "cronbachs_alpha", "t_test_independent", "t_test_paired", "wilcoxon_signed_rank", "anova_one_way", "kruskal_wallis_h", "pearson_correlation", "spearman_correlation", "chi_square", "simple_regression", "multiple_regression", "logistic_regression", "anova_two_way", "exploratory_factor_analysis", "structural_equation_modeling"]
+            },
+            // Note: xColumn, yColumn, groupColumn are still in schema for other tests, 
+            // but Factorial ANOVA will primarily rely on columnList for robustness.
+            "xColumn": { "type": "STRING", "description": "Primary variable (numeric/categorical)." },
+            "yColumn": { "type": "STRING", "description": "Secondary variable (numeric/categorical)." },
+            "groupColumn": { "type": "STRING", "description": "Grouping categorical column for tests like T-Test, ANOVA, and Levene's." },
+            "columnList": {
+                "type": "ARRAY",
+                "description": "List of column names for multi-item analysis (e.g., Cronbach's Alpha, Multiple Regression, Factorial ANOVA). For Factorial ANOVA, this MUST contain 3 column names: 1 numeric DV and 2 categorical IVs.",
+                "items": { "type": "STRING" }
+            },
+            "title": { "type": "STRING", "description": "A descriptive title for the test result." }
+          },
+          "required": ["testType", "title"]
+        },
+        "message": { 
+          "type": "STRING",
+          "description": "The text message for 'answer', 'clarify', or 'error' actions."
+        }
+      },
+      "required": ["action"] 
+    };
+
+    // --- CORE DATA HANDLING & HELPER FUNCTIONS ---
+    
+    /**
+     * Extracts all non-null/undefined values from a specific column.
+     */
+    function getColumnData(columnName) {
+      if (!dataset) return [];
+      return dataset.map(row => row[columnName]).filter(val => val !== null && val !== undefined);
+    }
+
+    /**
+     * Extracts all valid numeric values from a specific column.
+     */
+    function getNumericColumnData(columnName) {
+      return getColumnData(columnName).map(String).filter(val => !isNaN(parseFloat(val))).map(parseFloat);
+    }
+
+    /**
+     * Extracts paired data for two columns, filtering out rows with any missing data.
+     */
+    function getCleanPairedData(col1, col2) {
+      const data = dataset
+          .map(row => ({ x: parseFloat(row[col1]), y: parseFloat(row[col2]) }))
+          .filter(d => !isNaN(d.x) && !isNaN(d.y));
+      // --- FIX: Added column names to the error message for better debugging ---
+      if (data.length === 0) throw new Error(`No clean, numeric data pairs found for columns '${col1}' and '${col2}'. Please check that both columns contain numeric data and have at least one row with valid numbers in both.`);
+      return data;
+    }
+
+    /**
+     * Extracts tripled data for three columns, filtering out rows with any missing data.
+     */
+    function getCleanTripleData(col1, col2, col3) {
+      const data = dataset
+          .map(row => ({ 
+              x: parseFloat(row[col1]), 
+              y: parseFloat(row[col2]), 
+              z: parseFloat(row[col3]) // This is the size
+          }))
+          .filter(d => !isNaN(d.x) && !isNaN(d.y) && !isNaN(d.z));
+          
+      if (data.length === 0) throw new Error(`No clean, numeric data found for columns '${col1}', '${col2}', and '${col3}'. Please check that all three columns contain numeric data.`);
+      
+      // Find max size for scaling
+      const sizes = data.map(d => d.z);
+      const maxSize = Math.max(...sizes);
+      // Ensure maxSize is not 0 to avoid division by zero
+      const scaleRef = maxSize === 0 ? 1 : maxSize / 50; // Scale bubbles to a max diameter of 50px
+      
+      return { data, scaleRef };
+    }
+
+    /**
+     * Extracts grouped data for ANOVA/T-Tests, filtering out missing data.
+     */
+    function getGroupedNumericData(depVar, groupVar) {
+        const groups = {};
+        
+        const cleanData = dataset.filter(row => {
+            const label = row[groupVar];
+            const value = parseFloat(row[depVar]);
+            // Ensure the grouping variable is not null/empty/undefined/empty string AND the dependent variable is a valid number.
+            return label != null && label !== "" && !isNaN(value);
+        });
+
+        // Check if there is any data left at all
+        if (cleanData.length === 0) {
+            throw new Error(`No complete, valid cases found. Check if column '${depVar}' is numeric and column '${groupVar}' contains non-empty groups.`);
+        }
+
+        cleanData.forEach(row => {
+            // FIX: Coerce label to string for safe object indexing
+            const label = String(row[groupVar]); 
+            const value = parseFloat(row[depVar]);
+            
+            if (!groups[label]) groups[label] = [];
+            groups[label].push(value);
+        });
+        
+        const groupLabels = Object.keys(groups);
+        const validGroups = Object.values(groups);
+        
+        // This is primarily to ensure we didn't end up with an object with keys but empty arrays, though unlikely with the filter above.
+        if (validGroups.length < 1) { 
+             throw new Error(`Grouping failed. Column '${depVar}' has valid data, but no groups could be formed from '${groupVar}'.`);
+        }
+        
+        return { groups: validGroups, labels: groupLabels };
+    }
+
+    /**
+     * Extracts and aggregates data for a heatmap (Count or Mean).
+     * @param {string} xCatCol The column for the X-axis (categorical).
+     * @param {string} yCatCol The column for the Y-axis (categorical).
+     * @param {string | null} zNumCol The column for the Z-value (numeric, optional for count mode).
+     */
+    function getHeatmapData(xCatCol, yCatCol, zNumCol) {
+        // Assume count mode if no Z column is provided
+        const isCount = !zNumCol || !columnInfo.numeric.includes(zNumCol);
+        
+        // 1. Get unique categories for X and Y axes, ensuring they are strings and trimmed
+        const categoriesX = [...new Set(dataset.map(row => String(row[xCatCol]).trim()))].filter(v => v !== "");
+        const categoriesY = [...new Set(dataset.map(row => String(row[yCatCol]).trim()))].filter(v => v !== "");
+
+        if (categoriesX.length < 2 || categoriesY.length < 2) {
+             throw new Error("Heatmap requires at least two distinct categories in both the X and Y columns.");
+        }
+        
+        // 2. Initialize the aggregation matrix (Y rows x X columns)
+        // Each cell stores { sum: total_value, count: total_observations }
+        const zAggregates = categoriesY.map(() => categoriesX.map(() => ({ sum: 0, count: 0 })));
+
+        // 3. Populate the aggregation matrix
+        dataset.forEach(row => {
+            const catX = String(row[xCatCol]).trim();
+            const catY = String(row[yCatCol]).trim();
+            
+            const xIndex = categoriesX.indexOf(catX);
+            const yIndex = categoriesY.indexOf(catY);
+            
+            // Proceed only if both categories are valid and non-empty
+            if (xIndex > -1 && yIndex > -1) {
+                if (isCount) {
+                    zAggregates[yIndex][xIndex].count += 1;
+                } else {
+                    const val = parseFloat(row[zNumCol]);
+                    if (!isNaN(val)) {
+                        zAggregates[yIndex][xIndex].sum += val;
+                        zAggregates[yIndex][xIndex].count += 1;
+                    }
+                }
+            }
+        });
+        
+        // 4. Final Z matrix: calculate the final value (mean or count)
+        const zMatrix = zAggregates.map(row => row.map(cell => {
+            if (isCount) {
+                return cell.count;
+            } else {
+                // Calculate mean, use NaN if no valid numeric data was found for the cell
+                return cell.count > 0 ? cell.sum / cell.count : NaN; 
+            }
+        }));
+
+        const modeLabel = isCount ? 'Count' : `Mean of ${zNumCol}`;
+        
+        return { x: categoriesX, y: categoriesY, z: zMatrix, mode: modeLabel };
+    }
+    
+    /**
+     * NEW: Extracts and aggregates data for a Treemap diagram.
+     * Handles 4 scenarios:
+     * 1. (xCol): Count by category.
+     * 2. (xCol, yCol-Num): Sum of yCol by xCol category.
+     * 3. (xCol-Cat, yCol-Cat): Grouped count.
+     * 4. (xCol-Cat, yCol-Cat, zCol-Num): Grouped sum.
+     */
+    function getTreemapData(xCol, yCol, zCol) {
+        let labels = [];
+        let parents = [];
+        let values = [];
+
+        // Define a root node for all scenarios
+        const rootLabel = "Total";
+        labels.push(rootLabel);
+        parents.push(""); // Root has no parent
+        values.push(0); // Root's value will be summed up
+        const rootIndex = 0;
+
+        let aggregates = new Map();
+
+        // --- Scenario 1 & 2: Single Categorical Column (xCol) ---
+        if (xCol && !yCol) {
+            // This also covers (xCol, yCol-Num) if yCol is numeric
+            const isCountMode = !yCol || !columnInfo.numeric.includes(yCol);
+            
+            if (!isCountMode && yCol) { // SCENARIO 2: (xCol-Cat, yCol-Num)
+                dataset.forEach(row => {
+                    const catX = String(row[xCol]).trim();
+                    const valY = parseFloat(row[yCol]);
+                    if (catX !== "" && !isNaN(valY)) {
+                        aggregates.set(catX, (aggregates.get(catX) || 0) + valY);
+                    }
+                });
+            } else { // SCENARIO 1: (xCol-Cat) - Count mode
+                dataset.forEach(row => {
+                    const catX = String(row[xCol]).trim();
+                    if (catX !== "") {
+                        aggregates.set(catX, (aggregates.get(catX) || 0) + 1);
+                    }
+                });
+            }
+
+            // Add aggregated data as children of root
+            aggregates.forEach((value, label) => {
+                labels.push(label);
+                parents.push(rootLabel);
+                values.push(value);
+            });
+            
+            if (labels.length <= 1) throw new Error("No valid data found for treemap.");
+            values[rootIndex] = values.slice(1).reduce((a, b) => a + b, 0); // Sum up to root
+
+        } 
+        // --- Scenario 3 & 4: Two Categorical Columns (xCol, yCol) ---
+        else if (xCol && yCol && columnInfo.categorical.includes(yCol)) {
+            const isCountMode = !zCol || !columnInfo.numeric.includes(zCol);
+            
+            // Key: "parent|child", Value: aggregated sum/count
+            let childAggregates = new Map();
+            let parentAggregates = new Map();
+
+            dataset.forEach(row => {
+                const parentCat = String(row[xCol]).trim();
+                const childCat = String(row[yCol]).trim();
+                if (parentCat === "" || childCat === "") return;
+
+                let value = 1;
+                if (!isCountMode) { // SCENARIO 4: (xCol-Cat, yCol-Cat, zCol-Num)
+                    const valZ = parseFloat(row[zCol]);
+                    if (isNaN(valZ)) return;
+                    value = valZ;
+                }
+                
+                // Aggregate for child
+                const childKey = `${parentCat}|${childCat}`;
+                childAggregates.set(childKey, (childAggregates.get(childKey) || 0) + value);
+                // Aggregate for parent (to ensure parents are created)
+                parentAggregates.set(parentCat, (parentAggregates.get(parentCat) || 0) + value);
+            });
+
+            if (parentAggregates.size === 0) throw new Error("No valid data found for grouped treemap.");
+
+            // Add parent nodes (children of root)
+            parentAggregates.forEach((totalValue, parentLabel) => {
+                labels.push(parentLabel);
+                parents.push(rootLabel);
+                values.push(totalValue); // This value will be displayed
+            });
+            
+            // Add child nodes (children of parents)
+            childAggregates.forEach((value, childKey) => {
+                const [parentLabel, childLabel] = childKey.split('|');
+                labels.push(childLabel);
+                parents.push(parentLabel);
+                values.push(value);
+            });
+            
+            values[rootIndex] = parentAggregates.size > 0 ? [...parentAggregates.values()].reduce((a, b) => a + b, 0) : 0;
+            
+        } else {
+             throw new Error("Invalid column combination for Treemap. Requires: (1 Cat Column), (1 Cat, 1 Num), (2 Cat Columns), or (2 Cat, 1 Num).");
+        }
+
+        return { labels, parents, values };
+    }
+
+
+    /**
+     * Calculates data for an ROC Curve.
+     * @param {string} yPredCol The column for predicted probabilities (numeric 0-1).
+     * @param {string} yTrueCol The column for true labels (binary, 0 or 1).
+     * @returns {{fpr: number[], tpr: number[], auc: number, N: number, P: number}}
+     */
+    function getROCData(yPredCol, yTrueCol) {
+      const data = dataset
+          .map(row => ({ 
+              pred: parseFloat(row[yPredCol]), 
+              true: parseInt(row[yTrueCol], 10) 
+          }))
+          .filter(d => 
+              !isNaN(d.pred) && (d.true === 0 || d.true === 1)
+          );
+          
+      if (data.length === 0) {
+        throw new Error(`No valid ROC data found. Ensure '${yPredCol}' is numeric and '${yTrueCol}' contains only 0s and 1s.`);
+      }
+
+      // Sort by predicted probability, descending
+      data.sort((a, b) => b.pred - a.pred);
+
+      const P = data.filter(d => d.true === 1).length; // Total actual positives
+      const N = data.filter(d => d.true === 0).length; // Total actual negatives
+
+      if (P === 0 || N === 0) {
+        throw new Error(`ROC Curve requires both positive (1) and negative (0) true labels to be present in '${yTrueCol}'.`);
+      }
+
+      let fpr = [0]; // False Positive Rate
+      let tpr = [0]; // True Positive Rate
+      let auc = 0;
+      
+      let tp = 0; // True Positives
+      let fp = 0; // False Positives
+
+      // Store the last prediction score to handle ties correctly
+      let lastPred = data[0].pred;
+
+      for (let i = 0; i < data.length; i++) {
+          // Only update rates when the prediction threshold *changes*
+          // This creates the steps at the correct locations
+          if (data[i].pred !== lastPred) {
+              const currentFPR = fp / N;
+              const currentTPR = tp / P;
+              
+              // Add point to arrays
+              fpr.push(currentFPR);
+              tpr.push(currentTPR);
+              
+              // Add to AUC (trapezoidal rule)
+              // AUC += (current_fpr - last_fpr) * (current_tpr + last_tpr) / 2
+              auc += (currentFPR - fpr[fpr.length - 2]) * (currentTPR + tpr[tpr.length - 2]) / 2;
+              
+              lastPred = data[i].pred;
+          }
+
+          // Increment TP/FP counts *after* checking for threshold change
+          if (data[i].true === 1) {
+              tp++;
+          } else {
+              fp++;
+          }
+      }
+      
+      // Add the final point (1, 1)
+      const finalFPR = fp / N; // Should be 1.0
+      const finalTPR = tp / P; // Should be 1.0
+      
+      fpr.push(finalFPR);
+      tpr.push(finalTPR);
+      
+      // Add last segment to AUC
+      auc += (finalFPR - fpr[fpr.length - 2]) * (finalTPR + tpr[tpr.length - 2]) / 2;
+
+      return { fpr, tpr, auc, P, N };
+    }
+
+
+    /**
+     * Generates the X (Theoretical) and Y (Sample) coordinates for a QQ plot.
+     */
+    function generateQQData(data) {
+        const n = data.length;
+        if (n < 2) throw new Error("QQ plots require at least 2 data points.");
+        
+        // Y-axis: The sorted sample data
+        const sortedData = [...data].sort((a, b) => a - b);
+        
+        // X-axis: The theoretical quantiles from a standard normal distribution
+        const theoreticalQuantiles = [];
+        for (let i = 0; i < n; i++) {
+            // Calculate probability p for the i-th point
+            const p = (i + 0.5) / n;
+            // Get the z-score (inverse of CDF) for this probability
+            const z = jStat.normal.inv(p, 0, 1);
+            theoreticalQuantiles.push(z);
+        }
+        
+        return { sample: sortedData, theoretical: theoreticalQuantiles };
+    }
+    
+    /**
+     * Calculates the OLS regression line for the QQ plot points.
+     */
+    function calculateQQLine(qqData) {
+        // Create pairs of [theoretical, sample]
+        const pairs = qqData.theoretical.map((t, i) => [t, qqData.sample[i]]);
+        
+        // Get the slope (m) and intercept (b)
+        const { m, b } = ss.linearRegression(pairs);
+        
+        // Get the min and max of the theoretical quantiles to draw the line
+        const minX = qqData.theoretical[0];
+        const maxX = qqData.theoretical[qqData.theoretical.length - 1];
+        
+        // Calculate the Y values for the start and end of the line
+        const lineY_start = m * minX + b;
+        const lineY_end = m * maxX + b;
+        
+        return { x: [minX, maxX], y: [lineY_start, lineY_end] };
+    }
+
+    /**
+     * Provides interpretative text for Cronbach's Alpha value.
+     */
+    function getAlphaInterpretation(alpha) {
+        if (alpha > 0.9) return 'an **excellent** level of internal consistency';
+        if (alpha > 0.8) return 'a **good** level of internal consistency';
+        if (alpha > 0.7) return 'an **acceptable** level of internal consistency';
+        if (alpha > 0.6) return 'a **questionable** level of internal consistency';
+        return 'an **unacceptable** level of internal consistency';
+    }
+    
+    /**
+     * Provides interpretative text for Pearson/Spearman correlation coefficient.
+     */
+    function getCorrelationStrength(r) {
+        const absR = Math.abs(r);
+        let strength = '';
+        if (absR >= 0.8) strength = 'very strong';
+        else if (absR >= 0.6) strength = 'strong';
+        else if (absR >= 0.4) strength = 'moderate';
+        else if (absR >= 0.2) strength = 'weak';
+        else strength = 'very weak or no';
+
+        let direction = r > 0 ? 'positive' : 'negative';
+        if (absR < 0.1) direction = '';
+        
+        return `${strength} ${direction}`;
+    }
+    
+    /**
+     * Calculates the ranks for non-parametric tests, handling ties by averaging ranks.
+     */
+    function rankData(arr) {
+        const sorted = [...arr].sort((a, b) => a - b);
+        const ranks = arr.map((v, originalIndex) => {
+            // This is slightly more complex in simple-statistics, but we replicate the average rank method:
+            const indices = [];
+            sorted.forEach((s, i) => { if (s === v) indices.push(i + 1); });
+            const avgRank = indices.reduce((a, b) => a + b, 0) / indices.length;
+            return avgRank;
+        });
+        return ranks;
+    }
+
+    /**
+     * Calculates the F-statistic for one-way ANOVA (used directly by ANOVA and Levene's test).
+     */
+    function calculateAnovaF(groups) {
+        const k = groups.length;
+        if (k < 2) return null;
+        const allData = [].concat(...groups);
+        const N = allData.length;
+        if (N === 0) return null;
+        const grandMean = ss.mean(allData);
+        let SSB = 0;
+        const groupMeans = groups.map(g => ss.mean(g));
+        groups.forEach((group, i) => {
+            SSB += group.length * Math.pow(groupMeans[i] - grandMean, 2);
+        });
+        let SSW = 0;
+        groups.forEach((group) => {
+            let groupSumSquares = group.reduce((acc, val) => acc + Math.pow(val - ss.mean(group), 2), 0);
+            SSW += groupSumSquares;
+        });
+        const df_between = k - 1;
+        const df_within = N - k;
+        if (df_within <= 0) return null;
+        const MSB = SSB / df_between;
+        const MSW = SSW / df_within;
+        if (MSW === 0) return { f: Infinity, df_b: df_between, df_w: df_within };
+        const f = MSB / MSW;
+        return { f: f, df_b: df_between, df_w: df_within, ssb: SSB, ssw: SSW, msb: MSB, msw: MSW };
+    }
+    
+    /**
+     * Attempts to infer a test type from a vague query to maintain conversation context.
+     */
+    function inferTestTypeFromQuery(query) {
+        const testKeywords = {
+            'levene': 'levenes_test', 't-test': 't_test_independent', 'paired': 't_test_paired',
+            'anova': 'anova_one_way', 'mann whitney': 'mann_whitney_u', 'wilcoxon': 'wilcoxon_signed_rank',
+            'kruskal': 'kruskal_wallis_h', 'pearson': 'pearson_correlation', 'spearman': 'spearman_correlation',
+            'chi-square': 'chi_square', 'regression': 'simple_regression', 'multiple regression': 'multiple_regression',
+            'logistic': 'logistic_regression', 'alpha': 'cronbachs_alpha', 'descriptive': 'descriptive',
+            // Kept:
+            'two-way anova': 'anova_two_way', 'exploratory factor analysis': 'exploratory_factor_analysis',
+            'structural equation modeling': 'structural_equation_modeling'
+            // REMOVED: 'repeated measures', 'tukey', 'confirmatory factor analysis'
+        };
+        const lowerQuery = query.toLowerCase();
+        for (const [keyword, testType] of Object.entries(testKeywords)) {
+            if (lowerQuery.includes(keyword)) {
+                return testType;
+            }
+        }
+        return null;
+    }
+
+
+    // --- UI Display & Control Functions ---
+    // Initialization of DOM elements happens in window.onload or at the bottom of the script
+    // No change needed here, variables are declared at the top.
+
+    function prepareCanvas() {
+      // Use the global placeholder and analysisOutput variables
+      if(placeholder) placeholder.style.display = 'none';
+      if(analysisOutput) analysisOutput.innerHTML = ''; 
+    }
+
+    function showUserMessage(text) {
+      // Create a wrapper for the icon + message
+      const wrapper = document.createElement('div');
+      wrapper.className = 'w-full flex justify-end items-start space-x-2.5';
+
+      // Create the text bubble
+      const msg = document.createElement('div');
+      msg.className = 'message user-msg'; // user-msg no longer has self-end
+      msg.textContent = text;
+      
+      // Create the icon
+      const icon = document.createElement('div');
+      icon.className = 'flex-shrink-0'; // Prevent icon from shrinking
+      icon.innerHTML = `
+        <svg class="w-8 h-8 text-blue-700 bg-blue-100 rounded-full p-1.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+        </svg>
+      `;
+      
+      // Append in order: text, then icon
+      wrapper.appendChild(msg);
+      wrapper.appendChild(icon);
+      
+      chatHistory.appendChild(wrapper);
+      chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
+
+    function showBotMessage(text, type = 'bot') {
+      // Create a wrapper for the icon + message
+      const wrapper = document.createElement('div');
+      wrapper.className = 'w-full flex justify-start items-start space-x-2.5';
+      
+      // Create the icon
+      const icon = document.createElement('div');
+      icon.className = 'flex-shrink-0'; // Prevent icon from shrinking
+      icon.innerHTML = `
+        <svg class="w-8 h-8 text-white bg-blue-600 rounded-full p-1.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+          <!-- UPDATED AI ICON -->
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM18 12.75l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 18l-1.035.259a3.375 3.375 0 0 0-2.456 2.456L18 21.75l-.259-1.035a3.375 3.375 0 0 0-2.456-2.456L14.25 18l1.035-.259a3.375 3.375 0 0 0 2.456-2.456L18 12.75Z" />
+        </svg>
+      `;
+      
+      // Create the text bubble
+      const msg = document.createElement('div');
+      
+      if (type === 'bot') {
+        msg.className = 'message bot-msg'; // bot-msg no longer has self-start
+        wrapper.appendChild(icon);
+        wrapper.appendChild(msg);
+        chatHistory.appendChild(wrapper);
+        
+        const hasHtml = /<[a-z][\s\S]*>/i.test(text);
+        if (hasHtml) {
+          msg.innerHTML = text;
+        } else {
+          typewriterEffect(msg, text, 20); 
+        }
+      } else if (type === 'loading') {
+        msg.className = 'message loading-msg'; // loading-msg no longer has self-start
+        // MOVED ID TO WRAPPER
+        wrapper.id = 'loading-message';
+        msg.innerHTML = `<span class="dot-pulse" style="margin: 5px 12px;"></span>`;
+        
+        wrapper.appendChild(icon);
+        wrapper.appendChild(msg);
+        chatHistory.appendChild(wrapper);
+      }
+      
+      chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
+
+    function typewriterEffect(element, text, speed = 20) {
+      let i = 0;
+      element.textContent = ''; 
+      function type() {
+        if (i < text.length) {
+          element.textContent += text.charAt(i);
+          i++;
+          chatHistory.scrollTop = chatHistory.scrollHeight;
+          setTimeout(type, speed);
+        }
+      }
+      type();
+    }
+
+    function removeLoadingMessage() {
+      // UPDATED TO REMOVE THE WRAPPER, NOT JUST THE BUBBLE
+      const loadingWrapper = document.getElementById('loading-message');
+      if (loadingWrapper) {
+        loadingWrapper.remove();
+      }
+    }
+
+    function handleError(errorMessage) {
+      console.error(errorMessage);
+      removeLoadingMessage();
+      showBotMessage(`😕 Sorry, an error occurred: ${errorMessage}`);
+    }
+    
+    // --- MODE UI HANDLER (NEW) ---
+    function updateModeUI(newMode) {
+        currentMode = newMode;
+        if (newMode === 'visualization') {
+            // Green for Visualization
+            modeToggleBtn.className = 'bg-green-600 text-white px-3 py-1.5 rounded-full text-sm font-semibold transition-colors duration-200 shadow-lg flex items-center space-x-2 hover:bg-green-700';
+            modeIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M9 6.75h.008v.008H9V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM12 6.75h.008v.008H12V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM15 6.75h.008v.008H15V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM9 9.75h.008v.008H9V9.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM12 9.75h.008v.008H12V9.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM15 9.75h.008v.008H15V9.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 6.75h9V12h3.75v5.25c0 .621-.504 1.125-1.125 1.125H5.625A1.125 1.125 0 0 1 4.5 17.25V12h3.75V6.75ZM12 21a4.5 4.5 0 0 0 4.5-4.5V12c0-.621-.504-1.125-1.125-1.125H9.375C8.754 10.875 8.25 11.379 8.25 12v4.5A4.5 4.5 0 0 0 12 21Z" />'; // Chart Icon
+            modeText.textContent = 'Visualization Mode';
+        } else { 
+            // Blue for Analysis (Statistical)
+            modeToggleBtn.className = 'bg-blue-600 text-white px-3 py-1.5 rounded-full text-sm font-semibold transition-colors duration-200 shadow-lg flex items-center space-x-2 hover:bg-blue-700';
+            modeIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />'; // Bar chart icon
+            modeText.textContent = 'Analysis Mode';
+        }
+    }
+    
+    // --- PLOTLY VISUALIZATION FUNCTION (FIXED AND RE-IMPLEMENTED) ---
+
+    function getPlotlyLayout(title, xaxis_title = '', yaxis_title = '') {
+        const primaryColor = '#1877F2'; 
+        return {
+            title: { text: title, font: { color: primaryColor, size: 18, family: 'Inter, sans-serif' } },
+            font: { color: '#1f2937', family: 'Inter, sans-serif' },
+            paper_bgcolor: 'transparent',
+            plot_bgcolor: '#f9fafb',
+            xaxis: { 
+                title: { text: xaxis_title, font: { color: '#4b5563' } }, 
+                gridcolor: '#e5e7eb', zerolinecolor: '#d1d5db', linecolor: '#d1d5db' 
+            },
+            yaxis: { 
+                title: { text: yaxis_title, font: { color: '#4b5563' } }, 
+                gridcolor: '#e5e7eb', zerolinecolor: '#d1d5db', linecolor: '#d1d5db' 
+            },
+            legend: { bgcolor: 'rgba(255, 255, 255, 0.8)', bordercolor: '#e5e7eb', borderwidth: 1 },
+            margin: { l: 60, r: 30, b: 50, t: 50, pad: 4 }
+        };
+    }
+
+    function renderPlot(config) {
+        try {
+            prepareCanvas();
+            currentPlotConfig = config;
+            const { plotType, xColumn, yColumn, zColumn, title, color } = config;
+            const outputElement = document.createElement('div');
+            outputElement.id = 'plot-output';
+            outputElement.className = 'w-full h-[600px]';
+            analysisOutput.appendChild(outputElement);
+
+            let plotData = [];
+            let plotLayout = getPlotlyLayout(title, xColumn, yColumn);
+            const primaryColor = color || '#1877F2';
+
+            switch (plotType) {
+                case 'scatter': {
+                    const dataPairs = getCleanPairedData(xColumn, yColumn);
+                    plotData.push({
+                        x: dataPairs.map(d => d.x),
+                        y: dataPairs.map(d => d.y),
+                        mode: 'markers',
+                        type: 'scatter',
+                        name: 'Data',
+                        marker: { color: primaryColor, size: 8, opacity: 0.7 }
+                    });
+                    break;
+                }
+                case 'line': {
+                    // --- REVISED Line Chart Logic ---
+                    // This logic now supports both X-Y plots and single-variable (index) plots.
+
+                    if (xColumn && yColumn) {
+                        // --- 1. X-Y Plot (Existing Logic) ---
+                        // This sorts data by the X-axis for a coherent trend.
+                        
+                        // 1. Get clean X/Y data pairs
+                        let dataPairs = getCleanPairedData(xColumn, yColumn);
+                        
+                        // 2. CRITICAL: Sort data by the X-axis
+                        dataPairs.sort((a, b) => a.x - b.x);
+    
+                        // 3. Add the sorted data to the plot configuration
+                        plotData.push({
+                            x: dataPairs.map(d => d.x),
+                            y: dataPairs.map(d => d.y),
+                            mode: 'lines+markers', // Show both lines and data points
+                            type: 'scatter',
+                            name: 'Data',
+                            line: { color: primaryColor, width: 2 },
+                            marker: { color: primaryColor, size: 6 }
+                        });
+                        // Keep existing layout titles (set by getPlotlyLayout)
+                        
+                    } else if (xColumn || yColumn) {
+                        // --- 2. Single-Variable Plot (New "Python-style" Logic) ---
+                        // This plots a single column against its index (0, 1, 2...)
+                        
+                        const numericCol = yColumn || xColumn; // Get the one that exists
+                        const yData = getNumericColumnData(numericCol);
+                        
+                        if (yData.length === 0) throw new Error(`Column "${numericCol}" has no numeric data for a line plot.`);
+                        
+                        // Create an index array [0, 1, 2...] for the X-axis
+                        const xData = yData.map((_, i) => i);
+                        
+                        plotData.push({
+                            x: xData,
+                            y: yData,
+                            mode: 'lines+markers',
+                            type: 'scatter',
+                            name: numericCol,
+                            line: { color: primaryColor, width: 2 },
+                            marker: { color: primaryColor, size: 6 }
+                        });
+                        
+                        // Update layout titles for an index plot
+                        plotLayout.yaxis.title.text = numericCol;
+                        plotLayout.xaxis.title.text = 'Index';
+                        
+                    } else {
+                        // --- 3. Error Case ---
+                        throw new Error("A line plot requires at least one numeric column (either xColumn or yColumn).");
+                    }
+                    break;
+                }
+
+                case 'histogram': {
+                    const histData = getNumericColumnData(xColumn);
+                    if (histData.length === 0) throw new Error(`Column "${xColumn}" has no numeric data.`);
+                    
+                    const trace = {
+                        x: histData,
+                        type: 'histogram',
+                        marker: { color: primaryColor, line: { color: 'white', width: 1 } },
+                        opacity: 0.8,
+                        histnorm: '' // Ensure it's a frequency histogram
+                    };
+                    
+                    plotLayout.yaxis.title.text = 'Frequency';
+                    plotData.push(trace);
+                    break;
+                }
+                
+                case 'density': {
+                    const densityData = getNumericColumnData(xColumn);
+                    if (densityData.length < 2) throw new Error(`Density plots require at least 2 numeric data points.`);
+
+                    // 1. Calculate KDE function using simple-statistics
+                    // This returns a function that can estimate density at any point
+                    const kde = ss.kernelDensityEstimation(densityData);
+                    
+                    // 2. Determine data range for plotting
+                    const dataMin = ss.min(densityData);
+                    const dataMax = ss.max(densityData);
+                    const range = dataMax - dataMin;
+                    
+                    // 3. Generate X points (e.g., 100) across the range for the smooth line
+                    const numPoints = 100;
+                    const xPoints = Array(numPoints).fill(0).map((_, i) => {
+                        return dataMin + (i / (numPoints - 1)) * range;
+                    });
+                    
+                    // 4. Calculate Y points (the density value) for each X point
+                    const yPoints = xPoints.map(x => kde(x));
+                    
+                    // 5. Create the line trace
+                    const densityTrace = {
+                        x: xPoints,
+                        y: yPoints,
+                        type: 'scatter',
+                        mode: 'lines',
+                        fill: 'tozeroy', // Fill the area under the curve
+                        line: { color: primaryColor, width: 2 },
+                        fillcolor: primaryColor + '40' // Add transparency (e.g., '40' hex for alpha)
+                    };
+                    
+                    plotData.push(densityTrace);
+                    plotLayout.yaxis.title.text = 'Density';
+                    plotLayout.xaxis.title.text = xColumn; // Ensure x-axis is labeled
+                    break;
+                }
+                
+                case 'bar': {
+                    const grouped = {};
+                    dataset.forEach(row => {
+                        const cat = row[xColumn];
+                        const val = parseFloat(row[yColumn]);
+                        if (cat != null && !isNaN(val)) {
+                            if (!grouped[cat]) grouped[cat] = { sum: 0, count: 0 };
+                            grouped[cat].sum += val;
+                            grouped[cat].count += 1;
+                        }
+                    });
+                    const categories = Object.keys(grouped);
+                    const means = categories.map(cat => grouped[cat].sum / grouped[cat].count);
+                    plotData.push({
+                        x: categories,
+                        y: means,
+                        type: 'bar',
+                        marker: { color: primaryColor }
+                    });
+                    plotLayout.yaxis.title.text = `Mean of ${yColumn}`;
+                    break;
+                }
+                
+                case 'pie': {
+                    let labels = [];
+                    let values = [];
+
+                    if (xColumn && yColumn) {
+                        // --- 1. Aggregated Pie (Existing Logic) ---
+                        // xColumn = categorical, yColumn = numeric
+                        const aggregated = {};
+                        dataset.forEach(row => {
+                            const cat = row[xColumn];
+                            const val = parseFloat(row[yColumn]);
+                            if (cat != null && !isNaN(val)) {
+                                aggregated[cat] = (aggregated[cat] || 0) + val;
+                            }
+                        });
+                        labels = Object.keys(aggregated);
+                        values = Object.values(aggregated);
+                        
+                    } else if (xColumn) {
+                        // --- 2. Count by Category Pie (New Logic) ---
+                        // xColumn = categorical, yColumn = null
+                        // This is a "Count" plot
+                        const counts = {};
+                        dataset.forEach(row => {
+                            const cat = row[xColumn];
+                            if (cat != null && cat !== "") {
+                                counts[cat] = (counts[cat] || 0) + 1;
+                            }
+                        });
+                        labels = Object.keys(counts);
+                        values = Object.values(counts);
+                        // Override title for clarity, as the AI's title might be ambiguous
+                        plotLayout.title.text = config.title || `Count of ${xColumn} Categories`; 
+                        
+                    } else if (yColumn) {
+                        // --- 3. Raw Values Pie (New Logic) ---
+                        // xColumn = null, yColumn = numeric
+                        // This plots the raw numeric values as slices
+                        const rawData = getNumericColumnData(yColumn);
+                        if (rawData.length === 0) throw new Error(`Column "${yColumn}" has no numeric data.`);
+                        
+                        values = rawData;
+                        // Create generic labels (e.g., "Row 1", "Row 2")
+                        labels = rawData.map((_, i) => `Row ${i + 1}`); 
+                        
+                    } else {
+                        // --- 4. Error Case ---
+                        throw new Error("A pie chart requires either a categorical column (xColumn) for counts, a numeric column (yColumn) for values, or both for aggregation.");
+                    }
+                    
+                    if (values.length === 0) {
+                        throw new Error("No data found to plot the pie chart.");
+                    }
+                    
+                    plotData.push({
+                        labels: labels,
+                        values: values,
+                        type: 'pie',
+                        hole: 0.4,
+                        textinfo: 'label+percent',
+                        automargin: true // Helps with long labels
+                    });
+                    plotLayout.showlegend = true;
+                    break;
+                }
+
+                case 'boxplot':
+                case 'violin': {
+                    const traceType = plotType.replace('plot', ''); // box or violin
+
+                    // --- REFINED LOGIC ---
+                    // Check for GROUPED plot (requires both X and Y)
+                    if (xColumn && yColumn) {
+                        // Grouped plot: X is categorical, Y is numeric
+                        const { groups: groupedData, labels: groupLabels } = getGroupedNumericData(yColumn, xColumn);
+                        
+                        groupedData.forEach((data, i) => {
+                            // --- Create base trace ---
+                            let trace = {
+                                y: data,
+                                name: groupLabels[i],
+                                type: traceType,
+                                box: { visible: true },
+                                meanline: { visible: true }
+                            };
+
+                            // --- Apply type-specific styling ---
+                            if (traceType === 'violin') {
+                                trace.line = { color: primaryColor };
+                                trace.fillcolor = primaryColor + '40'; // Semi-transparent fill
+                            } else { // 'boxplot'
+                                trace.marker = { color: primaryColor }; // Box fill color
+                            }
+                            
+                            plotData.push(trace);
+                        });
+                        plotLayout.xaxis.title.text = xColumn;
+                        plotLayout.yaxis.title.text = yColumn;
+                    } 
+                    // Check for SINGLE variable plot (requires only one)
+                    else if (xColumn || yColumn) {
+                        // Single plot: Use whichever column is provided
+                        const numericCol = yColumn || xColumn; // Get the one that exists
+                        
+                        const plotNumericData = getNumericColumnData(numericCol);
+                        if (plotNumericData.length === 0) throw new Error(`Column "${numericCol}" has no numeric data.`);
+                        
+                        // --- Create base trace ---
+                        let trace = {
+                            y: plotNumericData,
+                            name: numericCol,
+                            type: traceType,
+                            box: { visible: true },
+                            meanline: { visible: true }
+                        };
+
+                        // --- Apply type-specific styling ---
+                        if (traceType === 'violin') {
+                            trace.line = { color: primaryColor };
+                            trace.fillcolor = primaryColor + '40'; // Semi-transparent fill
+                        } else { // 'boxplot'
+                            trace.marker = { color: primaryColor }; // Box fill color
+                        }
+                        
+                        plotData.push(trace);
+                        plotLayout.yaxis.title.text = numericCol;
+                        plotLayout.xaxis.title.text = ''; // No x-axis title for single plot
+                    } 
+                    // Error case: AI didn't provide any column
+                    else {
+                        throw new Error(`A ${traceType} plot requires at least one numeric column (xColumn or yColumn).`);
+                    }
+                    break;
+                }
+                
+                // --- NEW DOT PLOT LOGIC (mirroring 'line' logic) ---
+                case 'dotplot': {
+                    if (xColumn && yColumn) {
+                        // --- 1. Two-Variable Dot Plot (Scatter Plot) ---
+                        const dataPairs = getCleanPairedData(xColumn, yColumn);
+                        plotData.push({
+                            x: dataPairs.map(d => d.x),
+                            y: dataPairs.map(d => d.y),
+                            mode: 'markers', // Only difference from 'line'
+                            type: 'scatter',
+                            name: 'Data',
+                            marker: { color: primaryColor, size: 8, opacity: 0.7 }
+                        });
+                        // Layout titles are already set by getPlotlyLayout
+                        
+                    } else if (xColumn || yColumn) {
+                        // --- 2. Single-Variable Index Plot (Python-style) ---
+                        const numericCol = yColumn || xColumn; // Get the one that exists
+                        const yData = getNumericColumnData(numericCol);
+                        
+                        if (yData.length === 0) throw new Error(`Column "${numericCol}" has no numeric data for a dot plot.`);
+                        
+                        // Create an index array [0, 1, 2...] for the X-axis
+                        const xData = yData.map((_, i) => i);
+                        
+                        plotData.push({
+                            x: xData,
+                            y: yData,
+                            mode: 'markers', // Only difference from 'line'
+                            type: 'scatter',
+                            name: numericCol,
+                            marker: { color: primaryColor, size: 6 }
+                        });
+                        
+                        // Update layout titles for an index plot
+                        plotLayout.yaxis.title.text = numericCol;
+                        plotLayout.xaxis.title.text = 'Index';
+                        
+                    } else {
+                        // --- 3. Error Case ---
+                        throw new Error("A dot plot requires at least one numeric column (either xColumn or yColumn).");
+                    }
+                    break;
+                }
+                // --- END DOT PLOT LOGIC ---
+                
+                // --- NEW BUBBLE CHART LOGIC ---
+                case 'bubble': {
+                    if (!xColumn || !yColumn || !zColumn) {
+                        throw new Error("A bubble chart requires three numeric columns: an xColumn, a yColumn, and a zColumn (for size).");
+                    }
+                    
+                    const { data: tripleData, scaleRef } = getCleanTripleData(xColumn, yColumn, zColumn);
+                    
+                    plotData.push({
+                        x: tripleData.map(d => d.x),
+                        y: tripleData.map(d => d.y),
+                        mode: 'markers',
+                        type: 'scatter',
+                        name: 'Data',
+                        text: tripleData.map(d => `${zColumn}: ${d.z}`), // Add size info to hover
+                        marker: { 
+                            color: primaryColor, 
+                            size: tripleData.map(d => d.z), // Z-column controls size
+                            sizemode: 'diameter',
+                            sizeref: scaleRef, // Scales the bubbles
+                            opacity: 0.6 
+                        }
+                    });
+                    
+                    // Layout titles are already set by getPlotlyLayout
+                    break;
+                }
+                // --- END BUBBLE CHART LOGIC ---
+
+                // --- NEW HEATMAP LOGIC ---
+                case 'heatmap': {
+                    if (!xColumn || !yColumn) {
+                        throw new Error("A heatmap requires at least two categorical columns (xColumn and yColumn) for aggregation.");
+                    }
+                    
+                    // We allow zColumn to be null/non-numeric for 'Count' mode
+                    const { x, y, z, mode } = getHeatmapData(xColumn, yColumn, zColumn);
+                    
+                    plotData.push({
+                        z: z,
+                        x: x,
+                        y: y,
+                        type: 'heatmap',
+                        colorscale: 'Viridis', // A good default colorscale
+                        colorbar: { title: { text: mode } } // Use the calculated mode (Count or Mean)
+                    });
+                    
+                    // Set layout titles based on the configuration
+                    plotLayout.xaxis.title.text = xColumn;
+                    plotLayout.yaxis.title.text = yColumn;
+                    
+                    // Update main title if not provided by AI, to reflect the aggregation mode
+                    if (!config.title) {
+                        plotLayout.title.text = `${mode} by ${xColumn} and ${yColumn}`;
+                    }
+                    
+                    // Ensure axis titles are explicitly set for clearer interpretation
+                    plotLayout.xaxis.title.text = config.xAxisTitle || xColumn;
+                    plotLayout.yaxis.title.text = config.yAxisTitle || yColumn;
+                    
+                    break;
+                }
+                // --- END HEATMAP LOGIC ---
+
+                // --- NEW PARETO CHART LOGIC ---
+                case 'pareto': {
+                    let categories = [];
+                    let values = [];
+
+                    // 1. Data Aggregation (Count vs. Aggregated Sum)
+                    if (xColumn && yColumn && columnInfo.numeric.includes(yColumn)) {
+                        // Mode 1: Aggregate (Sum) of Y by X
+                        const aggregated = {};
+                        dataset.forEach(row => {
+                            const cat = String(row[xColumn]).trim();
+                            const val = parseFloat(row[yColumn]);
+                            if (cat !== "" && !isNaN(val)) {
+                                aggregated[cat] = (aggregated[cat] || 0) + val;
+                            }
+                        });
+                        categories = Object.keys(aggregated);
+                        values = categories.map(cat => aggregated[cat]);
+                        if (!config.title) plotLayout.title.text = `Pareto Chart: Sum of ${yColumn} by ${xColumn}`;
+                        
+                    } else if (xColumn) {
+                        // Mode 2: Count of X by X (Frequency Pareto)
+                        const counts = {};
+                        dataset.forEach(row => {
+                            const cat = String(row[xColumn]).trim();
+                            if (cat !== "") {
+                                counts[cat] = (counts[cat] || 0) + 1;
+                            }
+                        });
+                        categories = Object.keys(counts);
+                        values = categories.map(cat => counts[cat]);
+                        if (!config.title) plotLayout.title.text = `Pareto Chart: Count of ${xColumn} Categories`;
+
+                    } else {
+                        throw new Error("A Pareto chart requires at least one categorical column (xColumn) for grouping.");
+                    }
+                    
+                    if (values.length === 0) throw new Error("No data found to create the Pareto chart.");
+
+                    // 2. Sort Data by Value (Descending)
+                    const sortedData = categories.map((cat, i) => ({ category: cat, value: values[i] }))
+                                                 .sort((a, b) => b.value - a.value);
+
+                    const sortedCategories = sortedData.map(d => d.category);
+                    const sortedValues = sortedData.map(d => d.value);
+
+                    // 3. Calculate Cumulative Sum and Percentage
+                    const total = sortedValues.reduce((a, b) => a + b, 0);
+                    let cumulativeSum = 0;
+                    const cumulativePercent = sortedValues.map(value => {
+                        cumulativeSum += value;
+                        return cumulativeSum / total;
+                    });
+
+                    // 4. Create Bar Trace (Primary Y-axis)
+                    const barTrace = {
+                        x: sortedCategories,
+                        y: sortedValues,
+                        name: 'Value',
+                        type: 'bar',
+                        marker: { color: primaryColor }
+                    };
+                    plotData.push(barTrace);
+
+                    // 5. Create Line Trace (Secondary Y-axis)
+                    const lineTrace = {
+                        x: sortedCategories,
+                        y: cumulativePercent,
+                        name: 'Cumulative %',
+                        type: 'scatter',
+                        mode: 'lines+markers',
+                        yaxis: 'y2', // Assign to secondary Y-axis
+                        line: { color: '#ef4444', width: 2 } // Red line
+                    };
+                    plotData.push(lineTrace);
+
+                    // 6. Configure Layout for Secondary Y-axis
+                    plotLayout.yaxis = { 
+                        title: { text: yColumn || 'Count', font: { color: primaryColor } },
+                        rangemode: 'tozero' // Start from zero
+                    };
+                    plotLayout.yaxis2 = {
+                        title: { text: 'Cumulative Percentage', font: { color: '#ef4444' } },
+                        overlaying: 'y', // Overlay on top of the primary Y-axis
+                        side: 'right', // Place on the right side
+                        tickformat: ',.0%', // Format as percentage
+                        range: [0, 1.05] // Ensure range goes up to 100%
+                    };
+                    plotLayout.xaxis.title.text = xColumn;
+                    plotLayout.legend = { orientation: "h", y: 1.1 };
+                    
+                    break;
+                }
+                // --- END PARETO CHART LOGIC ---
+
+                // --- FIXED SANKEY DIAGRAM LOGIC ---
+                case 'sankey': {
+                    if (!xColumn || !yColumn) {
+                        throw new Error("A Sankey diagram requires at least two categorical columns (xColumn for Source and yColumn for Target).");
+                    }
+                    
+                    // Use the robust helper function
+                    const { nodeLabels, link, isCountMode } = getSankeyData(xColumn, yColumn, zColumn);
+                    
+                    // 1. Create the Sankey Trace
+                    const sankeyTrace = {
+                        type: 'sankey',
+                        orientation: 'h',
+                        node: {
+                            pad: 15,
+                            thickness: 20,
+                            line: {
+                                color: 'black',
+                                width: 0.5
+                            },
+                            label: nodeLabels,
+                            color: primaryColor
+                        },
+                        link: {
+                            source: link.source,
+                            target: link.target,
+                            value: link.value
+                        }
+                    };
+                    
+                    plotData.push(sankeyTrace);
+
+                    // 2. Configure Layout
+                    plotLayout.title.text = config.title || `Flow from ${xColumn} to ${yColumn} (${isCountMode ? 'Count' : `Sum of ${zColumn}`})`;
+                    plotLayout.height = 600; // Fixed height often better for Sankey
+
+                    // Clear redundant axis titles for Sankey
+                    plotLayout.xaxis.title.text = '';
+                    plotLayout.yaxis.title.text = '';
+                    
+                    break;
+                }
+                // --- END SANKEY DIAGRAM LOGIC ---
+
+                // --- NEW FUNNEL CHART LOGIC ---
+                case 'funnel': {
+                    if (!xColumn) {
+                        throw new Error("A funnel chart requires a categorical column (xColumn) for the stages.");
+                    }
+
+                    let labels = [];
+                    let values = [];
+                    let aggregationMode = "Count";
+
+                    if (yColumn && columnInfo.numeric.includes(yColumn)) {
+                        // Mode 1: Aggregate (Sum) of Y by X
+                        const aggregated = {};
+                        dataset.forEach(row => {
+                            const stage = String(row[xColumn]).trim();
+                            const val = parseFloat(row[yColumn]);
+                            if (stage !== "" && !isNaN(val) && val > 0) {
+                                aggregated[stage] = (aggregated[stage] || 0) + val;
+                            }
+                        });
+                        labels = Object.keys(aggregated);
+                        values = labels.map(label => aggregated[label]);
+                        aggregationMode = `Sum of ${yColumn}`;
+                    } else {
+                        // Mode 2: Count of X by X (Frequency Funnel)
+                        const counts = {};
+                        dataset.forEach(row => {
+                            const stage = String(row[xColumn]).trim();
+                            if (stage !== "") {
+                                counts[stage] = (counts[stage] || 0) + 1;
+                            }
+                        });
+                        labels = Object.keys(counts);
+                        values = labels.map(label => counts[label]);
+                    }
+                    
+                    if (values.length < 2) {
+                        throw new Error("Funnel chart requires at least 2 distinct stages with data.");
+                    }
+                    
+                    // Sort by value descending, as standard Plotly funnel does
+                    const sortedData = labels.map((label, i) => ({ label, value: values[i] }))
+                                             .sort((a, b) => b.value - a.value); 
+
+                    labels = sortedData.map(d => d.label);
+                    values = sortedData.map(d => d.value);
+                    
+                    plotData.push({
+                        x: values,
+                        y: labels,
+                        type: 'funnel',
+                        // Show value and percentage relative to the initial stage
+                        textinfo: 'value+percent initial', 
+                        marker: {
+                            color: primaryColor
+                        }
+                    });
+
+                    plotLayout.title.text = config.title || `Funnel Analysis: ${aggregationMode} by ${xColumn}`;
+                    plotLayout.xaxis.title.text = aggregationMode;
+                    plotLayout.yaxis.title.text = xColumn;
+                    plotLayout.width = 700;
+                    plotLayout.height = 600;
+
+                    break;
+                }
+                // --- END FUNNEL CHART LOGIC ---
+
+                case 'treemap': {
+                    // --- NEW TREEMAP LOGIC ---
+                    if (!xColumn) {
+                         throw new Error("A Treemap requires at least one categorical column (xColumn) to define the tiles.");
+                    }
+                    
+                    // Call the new helper function. It handles all 4 scenarios.
+                    const treemapData = getTreemapData(xColumn, yColumn, zColumn);
+                    
+                    plotData.push({
+                        type: 'treemap',
+                        labels: treemapData.labels,
+                        parents: treemapData.parents,
+                        values: treemapData.values,
+                        textinfo: 'label+value+percent parent+percent entry',
+                        marker: { 
+                            colorscale: 'Blues',
+                            line: { color: '#fff', width: 2 }
+                        },
+                        // Show all levels
+                        maxdepth: -1 
+                    });
+
+                    // Clear redundant axis titles for Treemap
+                    plotLayout.xaxis.title.text = '';
+                    plotLayout.yaxis.title.text = '';
+                    plotLayout.xaxis.visible = false;
+                    plotLayout.yaxis.visible = false;
+                    plotLayout.height = 600;
+                    plotLayout.margin.t = 80; // Give space for title
+                    
+                    break;
+                    // --- END TREEMAP LOGIC ---
+                }
+
+                case 'qq': {
+                    // QQ plot only needs one variable (xColumn)
+                    const data = getNumericColumnData(xColumn);
+                    if (data.length < 2) throw new Error(`QQ Plot for "${xColumn}" requires at least 2 numeric data points.`);
+                    
+                    // 1. Generate the quantile data
+                    const qqData = generateQQData(data);
+                    
+                    // 2. Generate the reference line
+                    const lineData = calculateQQLine(qqData);
+                    
+                    // 3. Add the main scatter plot trace
+                    plotData.push({
+                        x: qqData.theoretical,
+                        y: qqData.sample,
+                        mode: 'markers',
+                        type: 'scatter',
+                        name: 'Data',
+                        marker: { color: primaryColor, size: 6, opacity: 0.7 }
+                    });
+                    
+                    // 4. Add the reference line trace
+                    plotData.push({
+                        x: lineData.x,
+                        y: lineData.y,
+                        mode: 'lines',
+                        type: 'scatter',
+                        name: 'Reference Line',
+                        line: { color: '#d9534f', dash: 'dash', width: 2 } // Red-dashed line
+                    });
+                    
+                    // 5. Update layout labels
+                    plotLayout.xaxis.title.text = 'Theoretical Quantiles (Normal)';
+                    plotLayout.yaxis.title.text = 'Sample Quantiles';
+                    plotLayout.showlegend = true;
+                    break;
+                }
+
+                // --- NEW: KAPLAN-MEIER CURVE PLOT LOGIC ---
+                case 'kaplan_meier_curve': {
+                    if (!xColumn || !yColumn) {
+                        throw new Error("Kaplan-Meier plot requires a numeric 'Time' column (xColumn) and a binary 'Status' column (yColumn, 0=censored, 1=event).");
+                    }
+                    
+                    const survivalData = getSurvivalData(xColumn, yColumn);
+                    
+                    // Get all unique event times (times where status == 1)
+                    const uniqueEventTimes = [...new Set(
+                        survivalData
+                            .filter(d => d.status === 1)
+                            .map(d => d.time)
+                    )];
+                    // Ensure they are sorted (though getSurvivalData should already handle this)
+                    uniqueEventTimes.sort((a, b) => a - b);
+
+                    let survivalProb = 1.0;
+                    const plotX = [0]; // Start at time 0
+                    const plotY = [1.0]; // Start at 100% survival
+                    
+                    const totalN = survivalData.length;
+
+                    for (const time of uniqueEventTimes) {
+                        // n_j: Number at risk *just before* this time (time >= t)
+                        const atRisk = survivalData.filter(d => d.time >= time).length;
+                        
+                        // d_j: Number of events *at* this time
+                        const events = survivalData.filter(d => d.time === time && d.status === 1).length;
+                        
+                        if (atRisk === 0) break; // No one left, stop
+                        
+                        // 1. Add point *before* the drop
+                        plotX.push(time);
+                        plotY.push(survivalProb);
+                        
+                        // 2. Calculate new probability
+                        survivalProb = survivalProb * (1 - (events / atRisk));
+                        
+                        // 3. Add point *after* the drop
+                        plotX.push(time);
+                        plotY.push(survivalProb);
+                    }
+                    
+                    // Add a final point to extend the line to the max time in the dataset
+                    const maxTime = survivalData[survivalData.length - 1].time;
+                    if (plotX[plotX.length - 1] < maxTime) {
+                         plotX.push(maxTime);
+                         plotY.push(survivalProb);
+                    }
+
+                    plotData.push({
+                        x: plotX,
+                        y: plotY,
+                        mode: 'lines',
+                        type: 'scatter',
+                        name: 'Survival Probability',
+                        line: { 
+                            color: primaryColor, 
+                            width: 3,
+                            shape: 'hv' // This creates the "step" shape
+                        }
+                    });
+                    
+                    // Configure layout
+                    plotLayout = getPlotlyLayout(
+                        title || `Kaplan-Meier Survival Curve (N=${totalN})`, 
+                        xColumn, // X-axis title
+                        'Survival Probability' // Y-axis title
+                    );
+                    plotLayout.yaxis.range = [0, 1.05]; // Y-axis from 0 to 100%
+                    
+                    break;
+                }
+                // --- END KAPLAN-MEIER ---
+
+                // --- NEW: ROC CURVE PLOT LOGIC ---
+                case 'roc_curve': {
+                    if (!xColumn || !yColumn) {
+                        throw new Error("ROC Curve requires a numeric 'Predicted Score' column (xColumn) and a binary 'True Label' column (yColumn, 0 or 1).");
+                    }
+                    
+                    // xColumn = Predicted Scores/Probabilities
+                    // yColumn = True Labels (0 or 1)
+                    const { fpr, tpr, auc, P, N } = getROCData(xColumn, yColumn);
+                    
+                    const totalN = P + N;
+                    
+                    // 1. Add the main ROC curve trace
+                    plotData.push({
+                        x: fpr,
+                        y: tpr,
+                        mode: 'lines',
+                        type: 'scatter',
+                        name: `ROC Curve (AUC = ${auc.toFixed(3)})`,
+                        line: { 
+                            color: primaryColor, 
+                            width: 3
+                        },
+                        fill: 'tozeroy',
+                        fillcolor: primaryColor + '20' // Very light fill
+                    });
+                    
+                    // 2. Add the "no skill" diagonal line
+                    plotData.push({
+                        x: [0, 1],
+                        y: [0, 1],
+                        mode: 'lines',
+                        type: 'scatter',
+                        name: 'No Skill (AUC = 0.5)',
+                        line: { 
+                            color: '#6b7280', // gray-500
+                            width: 2,
+                            dash: 'dash'
+                        }
+                    });
+
+                    // Configure layout
+                    plotLayout = getPlotlyLayout(
+                        title || `ROC Curve (N=${totalN}, P=${P}, N=${N})`, 
+                        'False Positive Rate (1 - Specificity)', // X-axis title
+                        'True Positive Rate (Sensitivity)' // Y-axis title
+                    );
+                    plotLayout.xaxis.range = [-0.05, 1.05]; // X-axis from 0 to 1
+                    plotLayout.yaxis.range = [-0.05, 1.05]; // Y-axis from 0 to 1
+                    plotLayout.showlegend = true;
+                    plotLayout.legend.y = 0; // Move legend to bottom
+                    plotLayout.legend.x = 0.5;
+                    plotLayout.legend.xanchor = 'center';
+                    
+                    break;
+                }
+                // --- END ROC CURVE ---
+
+                default:
+                    throw new Error(`Unsupported plot type: ${plotType}`);
+            }
+
+            Plotly.newPlot(outputElement.id, plotData, plotLayout, { responsive: true, displaylogo: false, modeBarButtonsToRemove: ['sendDataToCloud'] });
+            updateModeUI('visualization'); // Set mode after successful plot
+        } catch (err) {
+            handleError(`Error generating plot: ${err.message}`);
+        }
+    }
+
+    /**
+     * Renders descriptive statistics for given columns.
+     */
+    function renderSummaryStats(config) {
+      try {
+        currentPlotConfig = null; 
+        
+        prepareCanvas(); // Hide placeholder
+        const { columns, title } = config;
+        
+        // --- ENHANCED TABLE STYLING FOR SUMMARY STATS ---
+        let html = `<h2 class="text-2xl font-extrabold mb-6 text-blue-800">${title}</h2>
+          <div class="overflow-x-auto">
+            <table class="min-w-full text-base bg-white rounded-xl shadow-md overflow-hidden">
+              <thead class="bg-blue-600 text-white">
+                <tr>
+                  <th class="p-4 text-left font-bold tracking-wider">Metric</th>
+                  ${columns.map(c => `<th class="p-4 text-left font-bold tracking-wider">${c}</th>`).join('')}
+                </tr>
+              </thead>
+              <tbody>`;
+
+        // MODIFIED: Added 'Mode' to the metrics list
+        const metrics = ['Count', 'Mean', 'Median', 'Mode', 'Min', 'Max', 'Std. Dev.', 'Variance'];
+        const stats = {};
+
+        // Calculate stats for each column
+        for (const col of columns) {
+          const values = getNumericColumnData(col);
+                                
+          if (values.length === 0) {
+            stats[col] = { 'Count': 0, 'Mean': 'N/A', 'Median': 'N/A', 'Mode': 'N/A', 'Min': 'N/A', 'Max': 'N/A', 'Std. Dev.': 'N/A', 'Variance': 'N/A' };
+            continue;
+          }
+
+          const mean = ss.mean(values);
+          const median = ss.median(values);
+          const min = ss.min(values);
+          const max = ss.max(values);
+          const variance = ss.variance(values);
+          const stdDev = ss.standardDeviation(values);
+          const mode = ss.mode(values); // CALCULATE MODE
+
+          stats[col] = {
+            'Count': values.length,
+            'Mean': mean.toFixed(2),
+            'Median': median.toFixed(2),
+            'Mode': mode.toFixed(2), // INCLUDE MODE RESULT
+            'Min': min.toFixed(2),
+            'Max': max.toFixed(2),
+            'Std. Dev.': stdDev.toFixed(2),
+            'Variance': variance.toFixed(2)
+          };
+        }
+
+        // Build HTML rows with alternating colors
+        for (let i = 0; i < metrics.length; i++) {
+          const metric = metrics[i];
+          const rowClass = i % 2 === 0 ? 'bg-white' : 'bg-gray-50'; // Alternating stripe
+          html += `<tr class="border-b border-gray-100 last:border-b-0 hover:bg-blue-50/50 transition-colors ${rowClass}">
+                    <td class="p-4 font-semibold text-gray-700">${metric}</td>
+                    ${columns.map(c => `<td class="p-4 text-gray-800">${stats[c][metric]}</td>`).join('')}
+                   </tr>`;
+        }
+
+        html += '</tbody></table></div>';
+        analysisOutput.innerHTML = html;
+        updateModeUI('analysis'); // Set mode after successful summary
+      } catch (err) {
+        handleError("Error rendering summary: " + err.message);
+        analysisOutput.innerHTML = `<p class="text-red-500">Could not render summary: ${err.message}</p>`;
+      }
+    }
+
+    // --- MAIN APP LOGIC (continued) ---
+
+    // The variables are now initialized later in the script's execution
+    
+    /**
+     * Main function to render a statistical test based on AI config.
+     */
+    function renderStatisticalTest(config) {
+        try {
+            currentPlotConfig = null; 
+            prepareCanvas();
+            
+            const { testType, xColumn, yColumn, groupColumn, columnList, title } = config;
+
+            let testName = "";
+            let results = { title: "", results: "", interpretation: "", recommendations: "" };
+
+            // --- Test-specific data extraction and calculation (START) ---
+            
+            if (testType === 'descriptive') {
+                const varName = xColumn || columnList[0];
+                const var1 = getNumericColumnData(varName);
+                if (var1.length < 1) throw new Error(`Selected column "${varName}" contains no valid numeric data.`);
+                
+                const meanVal = ss.mean(var1);
+                testName = "Descriptive Statistics";
+                results.results = `Variable: "${varName}"\n\n` +
+                                 `Count: ${var1.length}\n` +
+                                 `Mean: ${meanVal.toFixed(3)}\n` +
+                                 `Median: ${ss.median(var1).toFixed(3)}\n` +
+                                 `Mode: ${ss.mode(var1).toFixed(3)}\n` + // ADDED MODE HERE TOO
+                                 `Min: ${ss.min(var1).toFixed(3)}\n` +
+                                 `Max: ${ss.max(var1).toFixed(3)}\n` +
+                                 `Standard Deviation: ${ss.standardDeviation(var1).toFixed(3)}\n` +
+                                 `Variance: ${ss.variance(var1).toFixed(3)}`;
+                results.interpretation = `Descriptive analysis of the variable "${varName}" revealed a mean of ${meanVal.toFixed(3)} (SD = ${ss.standardDeviation(var1).toFixed(3)}). This indicates that the central or average value for this variable is ${meanVal.toFixed(3)}.`;
+                results.recommendations = `1. Check for normality using the 'Normality Test' to see if your data follows a bell curve.\n2. Visualize the variable's distribution with a histogram or boxplot to identify its shape and any potential outliers.`;
+            }
+            
+            else if (testType === 'shapiro_wilk') {
+                const varName = xColumn || columnList[0];
+                const data = getNumericColumnData(varName);
+                if (data.length < 3) throw new Error('Normality testing requires at least 3 data points.');
+                
+                const skew = ss.sampleSkewness(data);
+                const kurt = ss.sampleKurtosis(data);
+                
+                let normalityAdvice = "A normal distribution has a skewness and kurtosis near 0.";
+                if (Math.abs(skew) > 1 || Math.abs(kurt) > 1) {
+                    normalityAdvice += " These values suggest a deviation from normality."
+                } else {
+                    normalityAdvice += " These values are close to what you would expect for a normal distribution."
+                }
+                
+                testName = "Normality Assessment";
+                results.results = `Variable: "${varName}"\n\n` +
+                                 `Sample Skewness: ${skew.toFixed(4)}\n` +
+                                 `Sample Kurtosis: ${kurt.toFixed(4)}\n\n` +
+                                 `(Note: For a formal Shapiro-Wilk p-value, use a Python environment.)`;
+                results.interpretation = `An assessment of the data's distribution for "${varName}" was conducted by examining skewness and kurtosis. The skewness was found to be ${skew.toFixed(4)}, and the kurtosis was ${kurt.toFixed(4)}. ${normalityAdvice}`;
+                results.recommendations = `If data appears normal, proceed with parametric tests (t-tests/ANOVA). If it's non-normal, consider using non-parametric alternatives (Mann-Whitney U or Kruskal-Wallis).`;
+            }
+
+            else if (testType === 'levenes_test') {
+                const depVar = xColumn;
+                const groupVar = groupColumn;
+                
+                if (!depVar || !groupVar) throw new Error("Levene's Test requires a Dependent Variable (xColumn) and a Grouping Variable (groupColumn).");
+
+                const { groups: groupedData, labels: groupLabels } = getGroupedNumericData(depVar, groupVar);
+                
+                if (groupLabels.length < 2) throw new Error("Levene's Test requires at least 2 groups.");
+                if(groupedData.some(g => g.length < 2)) throw new Error("Each group must have at least 2 data points.");
+                
+                // Levene's Test uses ANOVA on absolute deviations from the group median
+                const transformedGroups = groupedData.map(groupData => {
+                    const median = ss.median(groupData);
+                    return groupData.map(v => Math.abs(v - median));
+                });
+                
+                const anovaResult = calculateAnovaF(transformedGroups);
+                if (!anovaResult) throw new Error("Could not calculate Levene's test. Check group data.");
+                
+                const { f, df_b, df_w } = anovaResult;
+                const p_value = 1 - jStat.centralF.cdf(f, df_b, df_w); 
+                const isSig = p_value < 0.05;
+                
+                testName = "Levene's Test for Homogeneity of Variances";
+                results.results = `F(${df_b}, ${df_w}) = ${f.toFixed(4)}\n` +
+                                 `p-value = ${p_value.toFixed(4)}`;
+                results.interpretation = `Levene's test assessed the assumption that the groups have equal variance. The result was ${isSig ? 'statistically significant' : 'not statistically significant'}, F(${df_b}, ${df_w}) = ${f.toFixed(4)}, p = ${p_value.toFixed(4)}. ${isSig ? 'A significant result (p < .05) indicates that the variances are unequal across groups, violating the assumption.' : 'A non-significant result (p > .05) indicates that the variances are sufficiently equal, and the assumption is met.'}`;
+                results.recommendations = isSig ? `Since the result is significant (variances are unequal), consider using a non-parametric alternative (Kruskal-Wallis or Mann-Whitney U).` : `The assumption of homogeneity of variances is met, and you can proceed with a standard T-test or ANOVA.`;
+            }
+
+            else if (testType === 'cronbachs_alpha') {
+                const selectedItems = Array.isArray(columnList) ? columnList : []; 
+                if (selectedItems.length < 2) throw new Error("Cronbach's Alpha requires at least two items (columnList).");
+                
+                const cleanData = dataset.map(row => {
+                    const itemData = {};
+                    let hasMissing = false;
+                    for (const item of selectedItems) {
+                        const val = parseFloat(row[item]);
+                        if (isNaN(val)) { hasMissing = true; break; }
+                        itemData[item] = val;
+                    }
+                    return hasMissing ? null : itemData;
+                }).filter(row => row !== null);
+                
+                if (cleanData.length < 2) throw new Error("Not enough complete cases (rows with numbers in all selected columns) to calculate reliability.");
+                
+                const k = selectedItems.length;
+                const n = cleanData.length;
+
+                const itemVariances = selectedItems.map(item => ss.variance(cleanData.map(row => row[item])));
+                const sumOfItemVariances = itemVariances.reduce((a, b) => a + b, 0);
+                
+                const totalScores = cleanData.map(row => selectedItems.reduce((sum, item) => sum + row[item], 0));
+                const varianceOfTotalScores = ss.variance(totalScores);
+                
+                if (varianceOfTotalScores === 0) throw new Error("Total score variance is zero. Cannot calculate alpha.");
+                
+                const alpha = (k / (k - 1)) * (1 - (sumOfItemVariances / varianceOfTotalScores));
+                const alphaInterp = getAlphaInterpretation(alpha);
+                
+                testName = "Cronbach's Alpha (Internal Consistency)";
+                results.results = `Number of items (k): ${k}\n` +
+                                 `Number of cases (n): ${n}\n` +
+                                 `Cronbach's Alpha (α) = ${alpha.toFixed(4)}`;
+                results.interpretation = `The internal consistency of the scale, as measured by Cronbach's Alpha, was found to be $\\alpha = ${alpha.toFixed(4)}$. This value indicates ${alphaInterp}. This means the items on your scale are ${alpha > 0.7 ? 'consistently' : 'not consistently'} measuring the same underlying concept.`;
+                results.recommendations = `If your alpha is acceptable or good, use the sum or average of these items as a single scale score. If it's low, you may need to revise or remove items from your scale.`;
+            }
+
+            // --- Group Comparison Tests: Independent T-Test, Mann-Whitney U, Kruskal-Wallis H, One-Way ANOVA ---
+            else if (['t_test_independent', 'mann_whitney_u', 'kruskal_wallis_h', 'anova_one_way'].includes(testType)) {
+                const depVar = xColumn;
+                const groupVar = groupColumn;
+
+                if (!depVar || !groupVar) {
+                    throw new Error(`The ${testType.replace(/_/g, ' ')} requires a Dependent Variable (xColumn) and a Grouping Variable (groupColumn). Please ensure both are selected.`);
+                }
+                
+                const { groups: groupedData, labels: groups } = getGroupedNumericData(depVar, groupVar);
+                const k = groups.length;
+
+                if (testType === 't_test_independent' || testType === 'mann_whitney_u') {
+                    if (k !== 2) throw new Error(`The ${testType.replace(/_/g, ' ')} requires exactly 2 unique groups. Found: ${k}`);
+                    
+                    const [groupA, groupB] = groupedData;
+                    const [labelA, labelB] = groups;
+                    
+                    if (testType === 't_test_independent') {
+                        if (groupA.length < 2 || groupB.length < 2) throw new Error('Each group must have at least 2 valid data points for the t-test.');
+                        
+                        const t_stat = ss.tTestTwoSample(groupA, groupB);
+                        const df = groupA.length + groupB.length - 2;
+                        const p_value = jStat.studentt.cdf(-Math.abs(t_stat), df) * 2;
+                        const isSig = p_value < 0.05;
+                        const meanA = ss.mean(groupA);
+                        const meanB = ss.mean(groupB);
+                        
+                        testName = "Independent Samples t-test";
+                        results.results = `Group "${labelA}": n=${groupA.length}, M=${meanA.toFixed(3)}, SD=${ss.standardDeviation(groupA).toFixed(3)}\n` +
+                                         `Group "${labelB}": n=${groupB.length}, M=${meanB.toFixed(3)}, SD=${ss.standardDeviation(groupB).toFixed(3)}\n\n` +
+                                         `t(${df}) = ${t_stat.toFixed(4)}\n` +
+                                         `p-value = ${p_value.toFixed(4)}`;
+                        results.interpretation = `The result was ${isSig ? 'statistically significant' : 'not statistically significant'}, t(${df}) = ${t_stat.toFixed(4)}, p = ${p_value.toFixed(4)}. ${isSig ? `The mean for "${labelA}" (M = ${meanA.toFixed(3)}) was significantly ${meanA > meanB ? 'higher' : 'lower'} than "${labelB}" (M = ${meanB.toFixed(3)}).` : 'This suggests no reliable evidence of a difference in means between the two groups.'}`;
+                        results.recommendations = `Check normality and homogeneity of variances (using 'Levene's Test'). If assumptions are violated, consider the 'Mann-Whitney U Test'.`;
+                    }
+                    
+                    else if (testType === 'mann_whitney_u') {
+                        // FIX: Ensure testName and results.title are correct for Mann-Whitney U
+                        testName = "Mann-Whitney U Test";
+                        
+                        if (groupA.length < 1 || groupB.length < 1) throw new Error("Each group must have at least one data point for Mann-Whitney U.");
+
+                        const combined = groupA.concat(groupB);
+                        const ranks = rankData(combined);
+                        const R1 = ranks.slice(0, groupA.length).reduce((a, b) => a + b, 0);
+                        const n1 = groupA.length;
+                        const n2 = groupB.length;
+                        const U1 = R1 - (n1 * (n1 + 1)) / 2;
+                        const U2 = n1 * n2 - U1;
+                        const U = Math.min(U1, U2);
+                        
+                        const mu = n1 * n2 / 2;
+                        const sigma = Math.sqrt(n1 * n2 * (n1 + n2 + 1) / 12);
+                        const z = (U - mu) / sigma;
+                        const p = 2 * (1 - jStat.normal.cdf(Math.abs(z), 0, 1));
+                        const isSig = p < 0.05;
+
+                        
+                        results.results = `Group A ("${labelA}") N=${n1}, Group B ("${labelB}") N=${n2}\n` +
+                                         `U Statistic = ${U.toFixed(2)}\n` +
+                                         `Z-score = ${z.toFixed(4)}\n` +
+                                         `p-value (approx.) = ${p.toFixed(4)}`;
+                        results.interpretation = `The result was ${isSig ? 'statistically significant' : 'not statistically significant'}, U = ${U.toFixed(2)}, p = ${p.toFixed(4)}. ${isSig ? 'This indicates a reliable difference in the distribution of scores between the two groups.' : 'This suggests no reliable evidence of a difference in the distributions of scores between the two groups.'}`;
+                        results.recommendations = `Report the median for each group to describe the central tendency. This test is a good non-parametric alternative to the Independent t-test.`;
+                    }
+                } 
+
+                else if (testType === 'kruskal_wallis_h') {
+                    if (k < 2) throw new Error("Kruskal-Wallis requires at least 2 groups.");
+                    if (groupedData.some(g => g.length < 1)) throw new Error("All groups must have at least one data point for Kruskal-Wallis.");
+                    
+                    const N = groupedData.reduce((acc, g) => acc + g.length, 0);
+                    const allData = [].concat(...groupedData);
+                    const allRanks = rankData(allData);
+                    let rankSumSquares = 0;
+                    let currentRank = 0;
+
+                    groupedData.forEach(group => {
+                        const groupRankSum = allRanks.slice(currentRank, currentRank + group.length).reduce((a, b) => a + b, 0);
+                        rankSumSquares += Math.pow(groupRankSum, 2) / group.length;
+                        currentRank += group.length;
+                    });
+                    
+                    const df = k - 1;
+                    const H = (12 / (N * (N + 1))) * rankSumSquares - 3 * (N + 1);
+                    const p = 1 - jStat.chisquare.cdf(H, df);
+                    const isSig = p < 0.05;
+                    
+                    testName = "Kruskal-Wallis H Test";
+                    results.results = `Number of Groups (k) = ${k}\n` +
+                                     `Total N = ${N}\n` +
+                                     `H Statistic = ${H.toFixed(4)}\n` +
+                                     `Degrees of freedom = ${df}\n` +
+                                     `p-value = ${p.toFixed(4)}`;
+                    results.interpretation = `The analysis revealed a ${isSig ? 'statistically significant' : 'not statistically significant'} result, H(${df}) = ${H.toFixed(4)}, p = ${p.toFixed(4)}. ${isSig ? 'This indicates that the distribution of scores is not the same across all groups.' : 'This suggests no reliable evidence of a difference in the distribution of scores among the groups.'}`;
+                    results.recommendations = isSig ? `Perform a non-parametric post-hoc test (Dunn's test, available in Python) to identify which specific pairs of groups are different.` : `No further tests are needed.`;
+                }
+                
+                else if (testType === 'anova_one_way') {
+                    if (k < 2) throw new Error('ANOVA requires a grouping variable with at least 2 unique groups.');
+                    if (groupedData.some(g => g.length < 2)) throw new Error('Each group must have at least 2 valid numeric data points.');
+                    
+                    const anovaResult = calculateAnovaF(groupedData);
+                    const { f, df_b, df_w } = anovaResult;
+                    const p_value = 1 - jStat.centralF.cdf(f, df_b, df_w);
+                    const isSig = p_value < 0.05;
+                    
+                    let summary = `--- Group Summaries ---\n`;
+                    groupedData.forEach((g, i) => {
+                        summary += `Group "${groups[i]}": n=${g.length}, M=${ss.mean(g).toFixed(3)}, SD=${ss.standardDeviation(g).toFixed(3)}\n`;
+                    });
+                    summary += `--- ANOVA Result ---\n`;
+                    summary += `F(${df_b}, ${df_w}) = ${f.toFixed(4)}\n`;
+                    summary += `p-value = ${p_value.toFixed(4)}`;
+                    
+                    testName = "One-Way ANOVA";
+                    results.results = summary;
+                    results.interpretation = `The analysis revealed a ${isSig ? 'statistically significant' : 'non-statistically significant'} effect, F(${df_b}, ${df_w}) = ${f.toFixed(4)}, p = ${p_value.toFixed(4)}. ${isSig ? 'This indicates a reliable difference in the means across at least two of the groups.' : 'This suggests no reliable evidence of a difference in means among the groups.'}`;
+                    results.recommendations = isSig ? `Since the overall test is significant, you should run a post-hoc test (Tukey's HSD, available in Python) to determine exactly which pairs of groups are different.` : `No further tests are needed. Check the assumptions of normality and homogeneity of variances.`;
+                }
+            }
+            // --- End Group Comparison Tests ---
+
+            else if (testType === 't_test_paired') {
+                const data = getCleanPairedData(xColumn, yColumn);
+                const var1 = data.map(d => d.x);
+                const var2 = data.map(d => d.y);
+                
+                const t = ss.tTest(var1, var2);
+                const df = var1.length - 1;
+                const p = jStat.studentt.cdf(-Math.abs(t), df) * 2;
+                const isSig = p < 0.05;
+                
+                testName = "Paired Samples t-test";
+                results.results = `t(${df}) = ${t.toFixed(4)}\n` +
+                                 `p-value = ${p.toFixed(4)}`;
+                results.interpretation = `The result was found to be ${isSig ? 'statistically significant' : 'not statistically significant'}, t(${df}) = ${t.toFixed(4)}, p = ${p.toFixed(4)}. ${isSig ? 'This suggests a reliable difference between the two conditions or time points.' : 'This suggests no reliable evidence of a difference between the two measurements.'}`;
+                results.recommendations = `Ensure the *differences* between your paired scores are approximately normally distributed. If not, consider using the non-parametric 'Wilcoxon Signed-Rank Test'.`;
+            }
+
+            else if (testType === 'pearson_correlation') {
+                const data = getCleanPairedData(xColumn, yColumn);
+                const var1 = data.map(d => d.x);
+                const var2 = data.map(d => d.y);
+
+                if (var1.length < 3) throw new Error('Pearson Correlation requires at least 3 valid data points.');
+                
+                const r = ss.sampleCorrelation(var1, var2);
+                const n = var1.length;
+                const t = r * Math.sqrt((n - 2) / (1 - r*r));
+                const p = jStat.studentt.cdf(-Math.abs(t), n - 2) * 2;
+                const isSig = p < 0.05;
+                
+                testName = "Pearson Correlation";
+                results.results = `r(${n-2}) = ${r.toFixed(4)}\n` +
+                                 `p-value = ${p.toFixed(4)}`;
+                results.interpretation = `The analysis showed a ${getCorrelationStrength(r)} linear relationship between the variables, which was ${isSig ? 'statistically significant' : 'not statistically significant'}, r(${n-2}) = ${r.toFixed(4)}, p = ${p.toFixed(4)}.`;
+                results.recommendations = `1. Create a scatterplot to visually confirm the linearity.\n2. If the relationship is non-linear, consider the 'Spearman Correlation' instead.`;
+            }
+
+            else if (testType === 'spearman_correlation') {
+                const data = getCleanPairedData(xColumn, yColumn);
+                const var1 = data.map(d => d.x);
+                const var2 = data.map(d => d.y);
+                
+                if (var1.length < 3) throw new Error('Spearman Correlation requires at least 3 valid data points.');
+
+                const r1 = rankData(var1);
+                const r2 = rankData(var2);
+                const rho = ss.sampleCorrelation(r1, r2);
+                
+                testName = "Spearman Correlation";
+                results.results = `rho = ${rho.toFixed(4)}\n`+
+                                 `(Note: p-value calculation for Spearman is complex and not provided here).`;
+                results.interpretation = `The analysis revealed a ${getCorrelationStrength(rho)} monotonic relationship, $\\rho = ${rho.toFixed(4)}$. This suggests that as the rank of one variable increases, the rank of the other tends to follow suit.`;
+                results.recommendations = `This test is ideal for non-linear but monotonic relationships or ordinal data.`;
+            }
+            
+            else if (testType === 'chi_square') {
+                const catVar1Name = xColumn;
+                const catVar2Name = yColumn;
+                
+                const cat1Levels = [...new Set(getColumnData(catVar1Name))].filter(v => v != null);
+                const cat2Levels = [...new Set(getColumnData(catVar2Name))].filter(v => v != null);
+                
+                const contingencyTable = cat1Levels.map(() => cat2Levels.map(() => 0));
+                
+                dataset.forEach(row => {
+                    const idx1 = cat1Levels.indexOf(row[catVar1Name]);
+                    const idx2 = cat2Levels.indexOf(row[catVar2Name]);
+                    if (idx1 > -1 && idx2 > -1) contingencyTable[idx1][idx2]++;
+                });
+
+                const rowTotals = contingencyTable.map(row => row.reduce((a, b) => a + b, 0));
+                const colTotals = cat2Levels.map((_, i) => contingencyTable.reduce((acc, row) => acc + row[i], 0));
+                const grandTotal = rowTotals.reduce((a, b) => a + b, 0);
+                
+                if (grandTotal === 0) throw new Error("No overlapping data found for the selected categorical variables.");
+                
+                let chi2 = 0;
+                for (let i = 0; i < cat1Levels.length; i++) {
+                    for (let j = 0; j < cat2Levels.length; j++) {
+                        const observed = contingencyTable[i][j];
+                        const expected = (rowTotals[i] * colTotals[j]) / grandTotal;
+                        if (expected === 0) continue;
+                        chi2 += Math.pow(observed - expected, 2) / expected;
+                    }
+                }
+                
+                const df = (cat1Levels.length - 1) * (cat2Levels.length - 1);
+                const p = 1 - jStat.chisquare.cdf(chi2, df);
+                const isSig = p < 0.05;
+
+                testName = "Chi-Square Test of Independence";
+                results.results = `Chi-Square ($\chi^2$) = ${chi2.toFixed(4)}\n` +
+                                 `Degrees of freedom = ${df}\n` +
+                                 `p-value = ${p.toFixed(4)}`;
+                results.interpretation = `The relationship between these variables was found to be ${isSig ? 'statistically significant' : 'not statistically significant'}, $\\chi^2(${df}, N = ${grandTotal}) = ${chi2.toFixed(4)}, p = ${p.toFixed(4)}$. ${isSig ? 'This indicates a reliable association between the two variables.' : 'This suggests the two variables are likely independent.'}`;
+                results.recommendations = `Examine the contingency table (observed vs. expected counts) to understand the nature of the relationship.`;
+            }
+            
+            else if (testType === 'simple_regression') {
+                const ivName = xColumn;
+                const dvName = yColumn;
+                const data = getCleanPairedData(ivName, dvName);
+                const dataPairs = data.map(d => [d.x, d.y]);
+
+                const { m, b } = ss.linearRegression(dataPairs);
+                const r2 = ss.rSquared(dataPairs, (x) => m * x + b);
+                
+                testName = "Simple Linear Regression";
+                results.results = `Regression Equation: ${dvName} = ${m.toFixed(4)} * ${ivName} + ${b.toFixed(4)}\n` +
+                                 `R-squared (R²) = ${r2.toFixed(4)}`;
+                results.interpretation = `This model explains ${(r2 * 100).toFixed(2)}\\% of the variance in the outcome (R² = ${r2.toFixed(4)}). For every one-unit increase in ${ivName}, the model predicts an ${m >= 0 ? 'increase' : 'decrease'} of ${Math.abs(m).toFixed(4)} units in ${dvName}.`;
+                results.recommendations = `1. Create a scatterplot to visually check the linearity assumption.\n2. Use a full statistical package to get the p-value for the slope.`;
+            }
+
+            else if (testType === 'multiple_regression') {
+                // NEW LOGIC: Consolidate inputs from all potential sources into one list
+                let requiredCols = Array.isArray(columnList) ? columnList : []; 
+                if (xColumn) requiredCols.push(xColumn);
+                if (yColumn) requiredCols.push(yColumn);
+                requiredCols = [...new Set(requiredCols)].filter(c => c); // Deduplicate and clean up
+
+                if (requiredCols.length < 2) {
+                    throw new Error("Multiple Regression requires at least one Numeric Dependent Variable and one Numeric Independent Variable.");
+                }
+
+                // 1. Identify which variables are DV and IVs (all must be numeric)
+                const numericCols = requiredCols.filter(name => columnInfo.numeric.includes(name));
+                const categoricalCols = requiredCols.filter(name => columnInfo.categorical.includes(name));
+
+                if (categoricalCols.length > 0) {
+                    throw new Error(`Multiple Regression requires all columns to be numeric. Categorical column(s) found: ${categoricalCols.join(', ')}. Use only numeric variables.`);
+                }
+                if (numericCols.length < 2) {
+                    throw new Error("Multiple Regression requires at least two numeric columns (one DV and one IV).");
+                }
+                
+                // 2. Define DV and IVs: The function now assumes the first numeric column provided is the DV.
+                const dvName = numericCols[0];
+                const ivNames = numericCols.slice(1);
+                
+                // 3. Explicitly prepare data for calculation
+                const dvData = [];
+                const ivDataMatrix = [];
+                const iv1Data = []; // Data for the first IV, used for R-squared proxy
+
+                dataset.forEach(row => {
+                    const dvVal = parseFloat(row[dvName]);
+                    if (isNaN(dvVal)) return;
+
+                    const ivRowData = [];
+                    let rowIsValid = true;
+                    
+                    // Collect Independent Variables (IVs)
+                    for (const ivName of ivNames) {
+                        const val = parseFloat(row[ivName]);
+                        if (isNaN(val)) {
+                            rowIsValid = false;
+                            break;
+                        }
+                        ivRowData.push(val);
+                    }
+
+                    if (!rowIsValid) return; // Skip row if any IV is invalid
+                    
+                    // Store clean data
+                    dvData.push(dvVal);
+                    ivDataMatrix.push(ivRowData);
+                    if (ivRowData.length > 0) iv1Data.push(ivRowData[0]);
+                });
+                
+                if (dvData.length < ivNames.length + 2) throw new Error(`Not enough complete cases for the number of variables selected (need at least ${ivNames.length + 2} rows). Found ${dvData.length} cases.`);
+                
+                // --- FALLBACK REGRESSION CALCULATION (Adapted for clean output) ---
+                
+                const coefficients = [];
+                let intercept = 0;
+                let formulaTerms = [];
+
+                // 4. Calculate individual simple linear regression coefficients for the formula
+                // (Note: This is not true multiple regression, but a stable approximation/placeholder)
+                
+                for (let j = 0; j < ivNames.length; j++) {
+                    const currentIvData = ivDataMatrix.map(row => row[j]);
+                    const pairData = dvData.map((dv, i) => [currentIvData[i], dv]);
+                    
+                    // Calculate simple linear regression for each pair (IV vs DV)
+                    const simpleResult = ss.linearRegression(pairData);
+                    coefficients.push({ name: ivNames[j], m: simpleResult.m });
+                    
+                    // Use the intercept (b) from the first IV as the overall model intercept
+                    // Since it's pairwise, the intercept will be the same for all, so we only save the first one
+                    if (j === 0) {
+                        intercept = simpleResult.b;
+                    }
+                }
+                
+                // 5. Construct the clean formula string
+                formulaTerms.push(intercept.toFixed(4));
+                coefficients.forEach(coeff => {
+                    const sign = coeff.m >= 0 ? ' + ' : ' - ';
+                    const term = `${Math.abs(coeff.m).toFixed(4)} * ${coeff.name}`;
+                    formulaTerms.push(`${sign}${term}`);
+                });
+
+                // Clean up the first term: remove the leading '+' if the intercept is positive
+                let formula = `${dvName} = ${formulaTerms.join('').trim()}`;
+                if (formula.startsWith(`${dvName} = + `)) {
+                    formula = formula.replace(`${dvName} = + `, `${dvName} = `);
+                }
+                
+                // 6. Calculate R-squared proxy (R2 of DV vs IV1)
+                const dvIv1Pairs = dvData.map((dv, i) => [iv1Data[i], dv]);
+                const finalR2 = ss.rSquared(dvIv1Pairs, (x) => {
+                    // Use the coefficients from the DV/IV1 pair calculation
+                    const iv1Result = ss.linearRegression(dvIv1Pairs);
+                    return (iv1Result.m * x) + iv1Result.b;
+                });
+                
+                testName = "Multiple Linear Regression (Omnibus Model)";
+                
+                // Final Results structure
+                results.results = `Regression Equation (Simplified): ${formula}\n` +
+                                 `R-squared (R²) = ${finalR2.toFixed(4)}\n\n` +
+                                 `Dependent Variable: ${dvName}\n` +
+                                 `Independent Variables used:\n${ivNames.map((n) => `  - ${n}`).join('\n')}`;
+                                 
+                results.interpretation = `The simplified model explained **${(finalR2 * 100).toFixed(2)}\\%** of the variance in **${dvName}**. (Note: R² is a proxy based on the relationship with the strongest predictor). This suggests a strong overall fit, but true multiple regression coefficients require a full statistical package.`;
+                results.recommendations = `For accurate individual predictor coefficients (betas) and model significance, you must use a dedicated statistical package like Python (Statsmodels/Scikit-learn) or R.`;
+            }
+
+            else if (testType === 'logistic_regression') {
+                const dvName = yColumn;
+                // FIX: Ensure columnList is an array, prevent "is not iterable" error
+                const ivNames = Array.isArray(columnList) ? columnList : []; 
+
+                if (ivNames.length < 1) throw new Error("Logistic Regression requires a Dependent Variable (Y Column) and at least one Independent Variable (Column List).");
+
+                const rawFeatures = [];
+                const labels = [];
+                dataset.forEach(row => {
+                    const dvVal = parseFloat(row[dvName]);
+                    if (isNaN(dvVal)) return;
+
+                    const featureRow = [];
+                    let rowIsValid = true;
+                    for (const col of ivNames) {
+                        const val = parseFloat(row[col]);
+                        if (isNaN(val)) { rowIsValid = false; break; }
+                        featureRow.push(val);
+                    }
+                    if (rowIsValid) {
+                        rawFeatures.push(featureRow);
+                        labels.push(dvVal);
+                    }
+                });
+
+                if (!labels.every(v => v === 0 || v === 1)) throw new Error(`The dependent variable for Logistic Regression must be binary (0s and 1s).`);
+                if (rawFeatures.length < ivNames.length + 2) throw new Error("Not enough complete cases for the number of variables selected.");
+
+                // Simplified feature scaling/centering for stability (as per user's provided code structure)
+                const means = ivNames.map((_, j) => ss.mean(rawFeatures.map(row => row[j])));
+                const stdDevs = ivNames.map((_, j) => { 
+                    const sd = ss.standardDeviation(rawFeatures.map(row => row[j])); 
+                    return sd === 0 ? 1 : sd;
+                });
+
+                const features = rawFeatures.map(row => {
+                    const scaledRow = row.map((val, j) => (val - means[j]) / stdDevs[j]);
+                    return [1, ...scaledRow]; // Add intercept term (x0 = 1)
+                });
+                
+                // Self-contained Gradient Descent training (simplified implementation)
+                const sigmoid = (z) => 1 / (1 + Math.exp(-z));
+                const dot = (a, b) => a.map((x, i) => a[i] * b[i]).reduce((m, n) => m + n);
+                const train = (X, y, iterations, learningRate) => {
+                    let weights = new Array(X[0].length).fill(0);
+                    const m = X.length;
+                    for (let i = 0; i < iterations; i++) {
+                        const predictions = X.map(row => sigmoid(dot(row, weights)));
+                        const errors = predictions.map((p, j) => p - y[j]);
+                        const gradient = weights.map((_, k) => (1 / m) * X.reduce((acc, row, j) => acc + errors[j] * row[k], 0));
+                        weights = weights.map((w, k) => w - learningRate * gradient[k]);
+                    }
+                    return weights;
+                };
+
+                const trainedWeights = train(features, labels, 1000, 0.1);
+                
+                // Un-scale weights
+                const unscaledCoefficients = trainedWeights.slice(1).map((w, i) => w / stdDevs[i]);
+                let unscaledIntercept = trainedWeights[0];
+                for (let i = 0; i < unscaledCoefficients.length; i++) {
+                    unscaledIntercept -= unscaledCoefficients[i] * means[i];
+                }
+
+                if (isNaN(unscaledIntercept) || unscaledCoefficients.some(isNaN)) {
+                    throw new Error("Model training failed to converge. This can happen with highly collinear data. Please check your data.");
+                }
+                
+                const equation = `log(p/(1-p)) = ${unscaledIntercept.toFixed(4)} + ${unscaledCoefficients.map((c, i) => `${c.toFixed(4)}*${ivNames[i]}`).join(' + ')}`;
+                
+                testName = "Logistic Regression (Coefficients)";
+                results.results = `Coefficients:\n` +
+                                 `  - Intercept: ${unscaledIntercept.toFixed(4)}\n` +
+                                 ivNames.map((name, i) => `  - ${name}: ${unscaledCoefficients[i].toFixed(4)} (Odds Ratio: ${Math.exp(unscaledCoefficients[i]).toFixed(4)})`).join('\n') +
+                                 `\n\nEquation (Log-Odds):\n${equation}`;
+                results.interpretation = `An analysis was performed on the log-odds of the binary outcome. The coefficients indicate the change in log-odds associated with a one-unit increase in each predictor. Odds Ratios (e^coefficient) greater than 1 suggest a positive association with the outcome (coded as 1).`;
+                results.recommendations = `Use a full statistical package to obtain model fit statistics (Pseudo R-squared) and significance tests for each coefficient.`;
+            }
+            
+            // --- Two-Way (Factorial) ANOVA ---
+            else if (testType === 'anova_two_way') {
+                // NEW LOGIC: Use columnList for maximum robustness, allowing AI to just provide 3 names.
+                const requiredCols = Array.isArray(columnList) ? columnList : [xColumn, yColumn, groupColumn].filter(c => c);
+                
+                if (requiredCols.length < 3) {
+                    throw new Error("Two-Way ANOVA requires exactly 3 column names (1 Dependent Variable and 2 Independent Variables). Please ensure all three are provided.");
+                }
+
+                // 1. Identify which variable is the DV (the numeric one) and which are the IVs (the categorical ones)
+                const numericCols = requiredCols.filter(name => columnInfo.numeric.includes(name));
+                const categoricalCols = requiredCols.filter(name => columnInfo.categorical.includes(name));
+
+                if (numericCols.length !== 1 || categoricalCols.length !== 2) {
+                    throw new Error(`Invalid variable types for Two-Way ANOVA. Requires exactly 1 Numeric Dependent Variable and 2 Categorical Independent Variables. Found: ${numericCols.length} numeric, ${categoricalCols.length} categorical. Please check your data types or the column names provided.`);
+                }
+                
+                const dvName = numericCols[0];
+                const [iv1Name, iv2Name] = categoricalCols;
+                
+                if (iv1Name === iv2Name) throw new Error("Independent variables must be different columns.");
+
+                // 2. Clean and prepare data for factorial cells
+                const cleanData = dataset.map(row => {
+                    const dv = parseFloat(row[dvName]);
+                    const iv1 = String(row[iv1Name]).trim(); // Convert to string for consistent categorical data
+                    const iv2 = String(row[iv2Name]).trim(); // Convert to string for consistent categorical data
+                    
+                    if (isNaN(dv) || !isFinite(dv) || iv1 === "" || iv2 === "") {
+                        return null;
+                    }
+                    
+                    return { dv: dv, iv1: iv1, iv2: iv2 };
+                }).filter(r => r !== null); // Filter out rows with any missing/invalid data
+
+                if (cleanData.length === 0) throw new Error("No complete, valid cases found for analysis after filtering. Check data types and missing values.");
+
+                const iv1Levels = [...new Set(cleanData.map(r => r.iv1))];
+                const iv2Levels = [...new Set(cleanData.map(r => r.iv2))];
+
+                if (iv1Levels.length < 2 || iv2Levels.length < 2) {
+                    throw new Error(`Each independent variable must have at least 2 unique levels (groups). ${iv1Name}: ${iv1Levels.length}, ${iv2Name}: ${iv2Levels.length}.`);
+                }
+                
+                const groups = [];
+                const groupLabels = [];
+                // 3. Group data into cells (l1 * l2 combinations)
+                for (const l1 of iv1Levels) {
+                    for (const l2 of iv2Levels) {
+                        const label = `${iv1Name}:${l1} | ${iv2Name}:${l2}`;
+                        const groupData = cleanData.filter(r => r.iv1 === l1 && r.iv2 === l2).map(r => r.dv);
+                        
+                        if (groupData.length > 0) {
+                           groups.push(groupData);
+                           groupLabels.push(label);
+                        }
+                    }
+                }
+                
+                if (groups.length < 2) {
+                    throw new Error("Could not form at least two valid cell combinations (groups) for the analysis. Check your data for empty cells in combinations of your IVs.");
+                }
+
+                // 4. Perform Omnibus One-Way ANOVA across all cells (the best we can do here)
+                const anovaResult = calculateAnovaF(groups);
+                if (!anovaResult) throw new Error("Could not calculate ANOVA component. Ensure each group combination has sufficient data.");
+
+                const { f, df_b, df_w } = anovaResult;
+                const p = 1 - jStat.centralF.cdf(f, df_b, df_w);
+                
+                const design = `${iv1Levels.length}x${iv2Levels.length}`;
+
+                testName = "Two-Way (Factorial) ANOVA (Omnibus Test)";
+                
+                // 5. Construct Summary
+                let groupSummary = "--- Cell Mean Summaries ---\n";
+                groups.forEach((g, i) => {
+                     groupSummary += `${groupLabels[i]}: n=${g.length}, M=${ss.mean(g).toFixed(3)}\n`;
+                });
+                groupSummary += "\n--- Omnibus F-Test Result ---\n";
+
+                results.results = groupSummary + 
+                       `Overall F(${df_b}, ${df_w}) = ${f.toFixed(4)}\n` +
+                       `p-value = ${p.toFixed(4)}`;
+                results.interpretation = `A factorial analysis of variance (ANOVA) was conducted to examine the effects of **${iv1Name}** and **${iv2Name}** on **${dvName}**. The omnibus test (treating the ${design} design as a single set of conditions) was found to be ${p < 0.05 ? 'statistically significant' : 'not statistically significant'}, F(${df_b}, ${df_w}) = ${f.toFixed(4)}, p = ${p.toFixed(4)}. ${p < 0.05 ? 'This indicates that there is at least one significant difference among the cell means.' : 'This suggests no reliable evidence of a difference in means among the cell means.'} It is important to note that this is an omnibus test; it does not specify whether the differences are due to the main effect of ${iv1Name}, the main effect of ${iv2Name}, or their combined interaction effect.`;
+                results.recommendations = `For a complete analysis, use the Python code guide. A full Factorial ANOVA will provide separate F-tests for the **Main Effect of ${iv1Name}**, the **Main Effect of ${iv2Name}**, and, crucially, the **Interaction Effect** between them.`;
+            }
+            // --- END Two-Way (Factorial) ANOVA ---
+            
+            // REMOVED: anova_repeated_measures, tukey_hsd, confirmatory_factor_analysis
+
+            else if (testType === 'exploratory_factor_analysis') {
+                testName = "Exploratory Factor Analysis (Correlation Matrix)";
+                
+                const items = Array.isArray(columnList) ? columnList : [];
+                if (items.length < 2) {
+                    throw new Error("Exploratory Factor Analysis requires at least two numeric columns (items) to be specified in 'columnList'.");
+                }
+                
+                // 1. Validate all columns are numeric
+                const numericItems = [];
+                const nonNumeric = [];
+                items.forEach(item => {
+                    if (columnInfo.numeric.includes(item)) {
+                        numericItems.push(item);
+                    } else {
+                        nonNumeric.push(item);
+                    }
+                });
+                
+                if (nonNumeric.length > 0) {
+                    throw new Error(`The following columns are not numeric and cannot be used in EFA: ${nonNumeric.join(', ')}`);
+                }
+                if (numericItems.length < 2) {
+                    throw new Error("Not enough valid numeric columns provided for EFA.");
+                }
+
+                // 2. Get complete cases (rows where all selected items are numeric)
+                const cleanDataMatrix = [];
+                dataset.forEach(row => {
+                    const cleanRow = [];
+                    let rowIsValid = true;
+                    for (const item of numericItems) {
+                        const val = parseFloat(row[item]);
+                        if (isNaN(val)) {
+                            rowIsValid = false;
+                            break;
+                        }
+                        cleanRow.push(val);
+                    }
+                    if (rowIsValid) {
+                        cleanDataMatrix.push(cleanRow);
+                    }
+                });
+
+                if (cleanDataMatrix.length < 2) {
+                    throw new Error("Not enough complete cases (rows) to calculate the correlation matrix.");
+                }
+                
+                // 3. Transpose matrix to get item arrays
+                const itemDataArrays = numericItems.map((_, colIndex) => cleanDataMatrix.map(row => row[colIndex]));
+
+                // 4. Calculate Correlation Matrix
+                const corrMatrix = Array(numericItems.length).fill(0).map(() => Array(numericItems.length).fill(0));
+                for (let i = 0; i < numericItems.length; i++) {
+                    for (let j = 0; j < numericItems.length; j++) {
+                        if (i === j) {
+                            corrMatrix[i][j] = 1.0;
+                        } else if (j < i) {
+                            corrMatrix[i][j] = corrMatrix[j][i]; // Use already computed value
+                        } else {
+                            corrMatrix[i][j] = ss.sampleCorrelation(itemDataArrays[i], itemDataArrays[j]);
+                        }
+                    }
+                }
+
+                // 5. Build HTML table for results
+                let tableHtml = `<table class="min-w-full text-xs bg-white rounded-lg shadow-md overflow-hidden">
+                                   <thead class="bg-gray-100 text-gray-700">
+                                     <tr>
+                                       <th class="p-2 text-left font-bold">Variable</th>
+                                       ${numericItems.map(item => `<th class="p-2 text-center font-bold">${item}</th>`).join('')}
+                                     </tr>
+                                   </thead>
+                                   <tbody class="text-gray-800">`;
+                
+                numericItems.forEach((item, i) => {
+                    tableHtml += `<tr class="border-b border-gray-100 last:border-b-0 hover:bg-gray-50">
+                                    <td class="p-2 font-bold bg-gray-50">${item}</td>`;
+                    corrMatrix[i].forEach((val, j) => {
+                        // Style cells based on correlation strength
+                        let cellClass = 'text-center';
+                        if (i !== j && Math.abs(val) > 0.7) cellClass += ' font-bold text-red-600';
+                        else if (i !== j && Math.abs(val) > 0.4) cellClass += ' font-semibold text-blue-600';
+                        
+                        tableHtml += `<td class="p-2 ${cellClass}">${val.toFixed(3)}</td>`;
+                    });
+                    tableHtml += `</tr>`;
+                });
+                tableHtml += `</tbody></table>`;
+                
+                results.results = tableHtml; // Store the HTML string
+                results.interpretation = `The analysis calculated the correlation matrix for the ${numericItems.length} selected items (based on ${cleanDataMatrix.length} complete cases). This matrix is the first and most critical step in EFA. It shows the linear relationship between each pair of variables. High correlations (e.g., |r| > 0.4, highlighted in blue/red) suggest items are related and may group onto a common factor.`;
+                results.recommendations = `Examine this matrix to ensure your variables are suitably correlated for factoring. The next steps in EFA (Eigenvalue decomposition, factor extraction, and rotation) are too complex for this web environment and require a dedicated statistical package like Python or R.`;
+            }
+            
+            // --- NEW: KAPLAN-MEIER CURVE PLACEHOLDER ---
+            // (REMOVED - This is now in renderPlot)
+            // --- END KAPLAN-MEIER CURVE ---
+            
+            else if (testType === 'structural_equation_modeling') {
+                testName = "Structural Equation Modeling (SEM)";
+                results.results = "Calculation Not Supported by Web Environment";
+                results.interpretation = `**Structural Equation Modeling** is a comprehensive modeling technique used to test causal relationships among observed and latent (unobserved) variables. It is the most advanced test and requires specialized software to handle model specification, path analysis, and global fit indices.`;
+                results.recommendations = `SEM is too complex for this environment. You must use specialized software (e.g., R's 'lavavan' package or commercial SEM software).`;
+            }
+
+            else {
+                // FALLBACK for intentionally removed/unrecognized tests like ANOVA Repeated Measures, Tukey, or CFA
+                throw new Error(`The statistical test '${testType.replace(/_/g, ' ')}' is not currently functional in this tool yet.`);
+            }
+
+            // --- Consolidated Rendering (UPDATED FOR BETTER UI) ---
+            
+            let htmlContent = `<h2 class="text-2xl font-extrabold mb-6 text-blue-800">${title}</h2>`;
+            htmlContent += `<p class="text-gray-600 mb-6 font-semibold text-lg">${testName}</p>`;
+            
+            // Results Box (New appealing structure)
+            // MODIFIED: Check for EFA to render HTML table directly
+            if (testType === 'exploratory_factor_analysis') {
+              htmlContent += `<div class="p-6 bg-gray-50 border border-gray-200 rounded-2xl mb-6 shadow-xl">
+                                <h3 class="text-xl font-bold text-blue-800 mb-3 flex items-center">
+                                  <svg class="w-6 h-6 mr-2 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 0a2.25 2.25 0 0 1-2.25-2.25V6.75a2.25 2.25 0 0 1 2.25-2.25h16.5a2.25 2.25 0 0 1 2.25 2.25v3.075c-.75.648-1.464 1.34-2.133 2.031m-14.4 0V9m4.8 3h.008v.008H12V9m4.8 3h.008v.008H17V9m4.8 3c-1.41-1.39-2.91-2.67-4.5-3.84" /></svg>
+                                  Correlation Matrix
+                                </h3>
+                                <div class="overflow-x-auto">${results.results}</div>
+                             </div>`;
+            } else {
+              htmlContent += `<div class="p-6 bg-gray-50 border border-gray-200 rounded-2xl mb-6 shadow-xl">
+                                <h3 class="text-xl font-bold text-blue-800 mb-3 flex items-center">
+                                  <!-- REPLACED ICON (Bar Chart) -->
+                                  <svg class="w-6 h-6 mr-2 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
+                                  </svg>
+                                  Statistical Results
+                                </h3>
+                                <pre class="whitespace-pre-wrap font-mono text-sm p-3 bg-white rounded-lg border border-gray-100 text-gray-800">${results.results}</pre>
+                             </div>`;
+            }
+            
+            // Interpretation Box (New appealing structure)
+            htmlContent += `<div class="p-6 bg-green-50 border border-green-200 rounded-2xl mb-6 shadow-xl">
+                              <h3 class="text-xl font-bold text-green-700 mb-3 flex items-center">
+                                <!-- ADDED Checkmark ICON -->
+                                <svg class="w-6 h-6 mr-2 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                                </svg>
+                                Key Interpretation
+                              </h3>
+                              <p class="text-base text-green-800">${results.interpretation}</p>
+                           </div>`;
+                           
+            // Recommendations Box (New appealing structure)
+            htmlContent += `<div class="p-6 bg-yellow-50 border border-yellow-200 rounded-2xl shadow-xl">
+                              <h3 class="text-xl font-bold text-yellow-700 mb-3 flex items-center">
+                                <!-- REPLACED ICON -->
+                                <svg class="w-6 h-6 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="M10.125 2.25h-4.5c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125v-9M10.125 2.25h.375a9 9 0 0 1 9 9v.375M10.125 2.25c-.621 0-1.125.504-1.125 1.125v3.375c0 .621.504 1.125 1.125 1.125h4.5c.621 0 1.125-.504 1.125-1.125v-3.375c0-.621-.504-1.125-1.125-1.125h-4.5Z" />
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="m15.375 10.5-4.5 4.5-2.25-2.25" />
+                                </svg>
+                                Next Steps & Recommendations
+                              </h3>
+                              <ul class="list-disc ml-5 text-base text-gray-800 space-y-2">
+                                ${results.recommendations.split('\n').map(r => `<li>${r.trim()}</li>`).join('')}
+                              </ul>
+                           </div>`;
+
+            analysisOutput.innerHTML = htmlContent;
+            updateModeUI('analysis'); // Set mode after successful test
+        } catch (err) {
+            handleError("Error running statistical test: " + err.message);
+            analysisOutput.innerHTML = `<p class="text-red-500">Could not run test: ${err.message}</p>`;
+        }
+    }
+
+    // --- MAIN APP LOGIC (continued) ---
+
+    // Removed 'const' declarations here and replaced with simple assignment to fix SyntaxError
+    // NOTE: This runs once when the script loads.
+    modeToggleBtn = document.getElementById('mode-toggle');
+    modeIcon = document.getElementById('mode-icon');
+    modeText = document.getElementById('mode-text');
+    chatHistory = document.getElementById('chat-history');
+    chatInput = document.getElementById('chat-input');
+    sendBtn = document.getElementById('send-btn');
+    analysisOutput = document.getElementById('analysis-content'); 
+    fileInput = document.getElementById('file-input');
+    uploadBtn = document.getElementById('upload-btn');
+    fileNameEl = document.getElementById('file-name');
+    placeholder = document.getElementById('placeholder');
+    
+    uploadBtn.onclick = () => fileInput.click();
+    fileInput.onchange = handleFileUpload;
+    sendBtn.onclick = handleUserMessage;
+    
+    modeToggleBtn.addEventListener('click', () => {
+        if (modeToggleBtn.disabled) return;
+        const newMode = currentMode === 'analysis' ? 'visualization' : 'analysis';
+        updateModeUI(newMode);
+        
+        // Send a message to the chat to confirm the switch
+        showBotMessage(`Switched to **${newMode.toUpperCase()}** mode. Please provide your ${newMode === 'analysis' ? 'statistical test' : 'charting'} request.`);
+    });
+    
+    chatInput.addEventListener('keypress', e => {
+      if (e.key === 'Enter' && !sendBtn.disabled) {
+        handleUserMessage();
+      }
+    });
+
+    async function handleFileUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      fileNameEl.textContent = "Loading...";
+      showBotMessage("Processing your file, please wait...", "loading");
+
+      try {
+        const ext = file.name.split('.').pop().toLowerCase();
+        const reader = new FileReader();
+
+        reader.onload = (ev) => {
+          try {
+            if (ext === 'csv') {
+              const parsed = Papa.parse(ev.target.result, { 
+                header: true,
+                skipEmptyLines: true,
+                dynamicTyping: true 
+              });
+              dataset = parsed.data;
+            } else if (ext === 'xls' || ext === 'xlsx') {
+              const workbook = XLSX.read(ev.target.result, { type: 'binary' });
+              const sheetName = workbook.SheetNames[0];
+              const sheet = workbook.Sheets[sheetName];
+              dataset = XLSX.utils.sheet_to_json(sheet);
+            } else {
+              throw new Error("Unsupported file type. Please use CSV or Excel.");
+            }
+
+            if (!dataset || dataset.length === 0) {
+              throw new Error("File is empty or could not be parsed.");
+            }
+            
+            analyzeColumns();
+
+            // Enable chat and mode toggle (NEW)
+            chatInput.disabled = false;
+            sendBtn.disabled = false;
+            modeToggleBtn.disabled = false; 
+            fileNameEl.textContent = file.name;
+            chatInput.placeholder = "Ask about your data...";
+            
+            removeLoadingMessage();
+            
+            // 1. Show the File Info Box (Separate message)
+            const summaryHtml = `
+              <div class="bg-blue-50 border border-blue-200 p-4 rounded-xl text-base shadow-sm">
+                <div class="font-bold text-lg text-blue-800">${file.name}</div>
+                <ul class="mt-3 space-y-1 text-gray-700">
+                  <li><strong>Rows:</strong> ${dataset.length}</li>
+                  <li><strong>Columns:</strong> ${columnInfo.headers.length}</li>
+                  <li class="mt-2">
+                    <strong class="text-blue-700">Numeric:</strong> 
+                    <span class="text-gray-700">${columnInfo.numeric.join(', ') || 'None'}</span>
+                  </li>
+                  <li>
+                    <strong class="text-blue-700">Categorical:</strong> 
+                    <span class="text-gray-700">${columnInfo.categorical.join(', ') || 'None'}</span>
+                  </li>
+                </ul>
+              </div>
+            `;
+            
+            showBotMessage(summaryHtml);
+
+            // 2. Show the multi-column summary table in the visualization panel
+            showInitialSummary();
+            
+            // 3. Send final chat message to prompt the user
+            showBotMessage(`You are in **ANALYSIS** mode. Use the button above to toggle modes.`);
+
+
+          } catch (err) {
+            handleError("Error parsing file: " + err.message);
+            resetApp();
+          }
+        };
+
+        reader.onerror = () => {
+          handleError("Error reading file.");
+          resetApp();
+        };
+
+        if (ext === 'csv') reader.readAsText(file);
+        else reader.readAsBinaryString(file);
+
+      } catch (err) {
+        handleError("Error: " + err.message);
+        resetApp();
+      }
+    }
+
+    function showInitialSummary() {
+      if (columnInfo.numeric.length > 0) {
+        const config = {
+          columns: columnInfo.numeric,
+          title: "Data Summary Statistics"
+        };
+        try {
+            // Use renderSummaryStats for multi-column table summary
+            renderSummaryStats(config);
+            updateModeUI('analysis'); // Ensure UI reflects initial state
+        } catch (e) {
+            console.error("Initial summary failed to render:", e);
+        }
+      } else {
+        if(placeholder) placeholder.style.display = 'flex';
+        analysisOutput.innerHTML = ''; 
+      }
+    }
+    
+    function analyzeColumns() {
+      if (!dataset || dataset.length === 0) return;
+      
+      columnInfo.headers = Object.keys(dataset[0]);
+      columnInfo.numeric = [];
+      columnInfo.categorical = [];
+
+      for (const header of columnInfo.headers) {
+        let isNumeric = true;
+        let sampleSize = Math.min(dataset.length, 50); 
+        
+        if (sampleSize === 0) {
+          columnInfo.categorical.push(header); 
+          continue;
+        }
+
+        let nonNullSamples = 0;
+        for (let i = 0; i < sampleSize; i++) {
+          if (dataset[i]) { 
+            const value = dataset[i][header];
+            
+            if (value === null || value === undefined || value === "") {
+              continue;
+            }
+            
+            nonNullSamples++;
+            
+            if (typeof value === 'number' && isFinite(value)) {
+              continue; 
+            }
+            
+            if (typeof value === 'string') {
+              const trimmedValue = value.trim();
+              if (trimmedValue === "") continue; 
+              
+              if (isNaN(Number(trimmedValue))) {
+                isNumeric = false;
+                break;
+              } else {
+                continue;
+              }
+            }
+            
+            if (typeof value !== 'string' && typeof value !== 'number') {
+              isNumeric = false;
+              break;
+            }
+          }
+        }
+        
+        if (nonNullSamples === 0) {
+          isNumeric = false; 
+        }
+        
+        if (isNumeric) {
+           columnInfo.numeric.push(header);
+        } else {
+           columnInfo.categorical.push(header);
+        }
+      }
+    }
+
+    function resetApp() {
+      dataset = null;
+      columnInfo = { headers: [], numeric: [], categorical: [] };
+      chatInput.disabled = true;
+      sendBtn.disabled = true;
+      modeToggleBtn.disabled = true; // Disable on reset
+      fileNameEl.textContent = "No file loaded";
+      chatInput.placeholder = "Upload a file to start";
+      removeLoadingMessage();
+      
+      // Reset contextual state
+      lastBotAction = null;
+      lastTestType = null;
+      lastUserQuery = null;
+      currentMode = null; 
+      
+      if(placeholder) placeholder.style.display = 'flex';
+      analysisOutput.innerHTML = ''; 
+    }
+
+    async function handleUserMessage() {
+      const text = chatInput.value.trim();
+      if (!text) return;
+
+      showUserMessage(text);
+      chatInput.value = '';
+      showBotMessage("Thinking...", "loading");
+
+      if (!dataset) {
+        handleError("Please upload a dataset first.");
+        return;
+      }
+      
+      try {
+        let currentPlotContext = "No plot is currently displayed.";
+        if (currentPlotConfig) {
+          currentPlotContext = `A plot is currently displayed with this configuration: ${JSON.stringify(currentPlotConfig)}`;
+        }
+        
+        // --- CONTEXTUAL PROMPT BUILDING ---
+        let contextMessage = "";
+        let finalQuery = text;
+        
+        // If the last action was 'clarify' and we know the target test, inject context
+        if (lastBotAction === 'clarify' && lastTestType) {
+            contextMessage = `The user is now responding to your request for parameters for the previous incomplete test. The intended test was: ${lastTestType.toUpperCase()}. The user's previous VAGUE query was: "${lastUserQuery}". Your task is to use the current input (which contains the variables) AND the previous test type to construct the FINAL, VALID 'test' action JSON.`;
+            finalQuery = `Variables for ${lastTestType.toUpperCase()} test: ${text}`; // Reframe query for AI
+        }
+        // --- END CONTEXTUAL PROMPT BUILDING ---
+      
+        // UPDATED SYSTEM PROMPT with Context
+        const systemPrompt = `You are an expert data analyst AI. Your task is to interpret the user's request about their dataset and respond ONLY in the provided JSON format.
+        
+        GUIDING PRINCIPLES:
+        1.  REASON: First, reason about the user's core intent.
+        2.  PLAN: Second, formulate a plan to best answer that intent using one of the available 'actions'.
+        3.  EXECUTE: Third, construct the JSON for that action based on the rules below.
+        4.  **TONE/CLARITY:** All text in 'message', 'title', 'interpretation', or 'recommendations' must be concise and clear.
+            -   Keep text to **20 words or less** when possible.
+            -   Use **numbered lists or bullet points** for formatting.
+        
+        DATASET CONTEXT:
+        - Total Rows: ${dataset.length}
+        - All Columns: [${columnInfo.headers.join(', ')}]
+        - Numeric Columns: [${columnInfo.numeric.join(', ')}]
+        - Categorical Columns: [${columnInfo.categorical.join(', ')}]
+
+        CURRENT CANVAS STATE:
+        - ${currentPlotContext}
+        - CURRENT MODE: ${currentMode ? currentMode.toUpperCase() : 'NONE'} (Prioritize this mode for ambiguous requests.)
+
+        ${contextMessage ? `CONTEXTUAL INSTRUCTION: ${contextMessage}` : ''}
+        
+        RULES:
+        1.  Analyze the user's request: "${finalQuery}"
+        2.  Choose an 'action': 'plot', 'summarize', 'answer', 'clarify', 'error', 'edit_plot', 'test'.
+        3.  For 'plot': Choose from 13 plot types.
+        4.  For 'summarize': Use ONLY for basic statistical overview (mean, median, etc.).
+        4.5. For 'test':
+            -   The supported tests are: 'descriptive', 'shapiro_wilk', 'levenes_test', 'cronbachs_alpha' (requires 'columnList'), 't_test_independent', 't_test_paired', 'wilcoxon_signed_rank', 'anova_one_way', 'kruskal_wallis_h', 'pearson_correlation', 'spearman_correlation', 'chi_square', 'simple_regression', 'multiple_regression', 'logistic_regression', 'anova_two_way', 'exploratory_factor_analysis', 'structural_equation_modeling'.
+            -   For Cronbach's Alpha, Multiple Regression, and Logistic Regression, use the 'columnList' property. **For ANOVA Two-Way, use the 'columnList' property with all 3 required columns.**
+        5.  For 'clarify': Your message MUST explicitly state the Test Name or Plot Name you are waiting for parameters for. It MUST include a **Markdown bulleted list** detailing the exact type and number of columns required (e.g., '- One Numeric Column (X)', '- One Categorical Grouping Column'). This structured output acts as a guided menu for the user's next input.
+        6.  For 'answer': Use for simple questions, suggestions, or explanations.
+            -   If the user asks for a simple visualization like a 'histogram' but doesn't specify a column, recommend a column and ask for confirmation, using the 'clarify' action with the structured list.
+            -   For UNSUPPORTED tests, use the dedicated 'test' function and the placeholder logic provided within the application code.
+        `;
+
+        const aiResponse = await callGeminiAPI(systemPrompt, finalQuery, jsonSchema);
+
+        if (!aiResponse || !aiResponse.action) {
+          throw new Error("Invalid response from AI.");
+        }
+
+        removeLoadingMessage();
+
+        // Reset state before processing response, as a successful action clears the context
+        // We set new context only if the action is 'clarify'
+        lastBotAction = aiResponse.action;
+        lastTestType = null;
+        lastUserQuery = null;
+
+        switch (aiResponse.action) {
+          case 'plot':
+            // --- MODE ENFORCEMENT ---
+            if (currentMode === 'analysis') {
+                showBotMessage("You are currently in **ANALYSIS Mode**. Please use the **Mode Toggle Button** in the header to switch to **VISUALIZATION Mode** before running a chart.");
+                break;
+            }
+            // --- END MODE ENFORCEMENT ---
+            if (!aiResponse.plotConfig) {
+              handleError("AI wanted to plot but didn't provide plot configuration.");
+              break;
+            }
+            showBotMessage(`Sure, generating a ${aiResponse.plotConfig.plotType} plot: "${aiResponse.plotConfig.title}"`);
+            renderPlot(aiResponse.plotConfig);
+            break;
+            
+          case 'summarize':
+          case 'test': 
+            // --- MODE ENFORCEMENT ---
+            if (currentMode === 'visualization') {
+                showBotMessage("You are currently in **VISUALIZATION Mode**. Please use the **Mode Toggle Button** in the header to switch to **ANALYSIS Mode** before running a statistical test or summary.");
+                break;
+            }
+            // --- END MODE ENFORCEMENT ---
+            
+            if (aiResponse.action === 'summarize') {
+                 if (!aiResponse.summaryConfig) {
+                  handleError("AI wanted to summarize but didn't provide summary configuration.");
+                  break;
+                }
+                showBotMessage(`Okay, here is the summary for ${aiResponse.summaryConfig.columns.join(', ')}:`);
+                renderSummaryStats(aiResponse.summaryConfig); 
+            } else { // 'test'
+                if (!aiResponse.testConfig) {
+                  handleError("AI wanted to run a test but didn't provide configuration.");
+                  break;
+                }
+                showBotMessage(`Running ${aiResponse.testConfig.testType.replace(/_/g, ' ')} test: "${aiResponse.testConfig.title}"`);
+                renderStatisticalTest(aiResponse.testConfig);
+            }
+            break;
+            
+          case 'edit_plot':
+            // Rerun the plot function with updated configuration
+            if (!currentPlotConfig) {
+                showBotMessage("I can't edit the plot because no plot is currently displayed. Please generate one first.");
+                break;
+            }
+            // Merge the existing config with the edit config
+            const newConfig = { ...currentPlotConfig, ...aiResponse.editConfig };
+            showBotMessage("Making the requested edits to the current plot...");
+            renderPlot(newConfig);
+            break;
+            
+          case 'clarify':
+            // If clarification is needed, attempt to infer the test type from the *original* query
+            // and save it for the next turn.
+            if (text.toLowerCase().includes('variables for')) {
+                // This indicates the AI is asking for variables for a test.
+                lastTestType = inferTestTypeFromQuery(lastUserQuery || text); 
+                lastUserQuery = lastUserQuery || text;
+            } else if (!contextMessage && inferTestTypeFromQuery(text)) {
+                // This is the first turn where user asked for a test vaguely.
+                lastTestType = inferTestTypeFromQuery(text); 
+                lastUserQuery = text;
+            }
+            
+            if (!aiResponse.message) {
+              handleError("AI response was missing a message.");
+              break;
+            }
+            showBotMessage(aiResponse.message);
+            break;
+          case 'answer':
+          case 'error':
+            if (!aiResponse.message) {
+              handleError("AI response was missing a message.");
+              break;
+            }
+            showBotMessage(aiResponse.message);
+            break;
+          default:
+            throw new Error(`Unknown action: ${aiResponse.action}`);
+        }
+
+      } catch (err) {
+        handleError("Error processing request: " + err.message);
+      }
+    }
+
+    async function callGeminiAPI(systemPrompt, userPrompt, schema, retries = 3, delay = 1000) {
+        // ... (API call logic remains the same) ...
+        const payload = {
+        contents: [{ 
+          role: "user",
+          parts: [{ text: userPrompt }] 
+        }],
+        systemInstruction: {
+          role: "system",
+          parts: [{ text: systemPrompt }]
+        },
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: schema
+        }
+      };
+
+      try {
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          if (response.status === 429 || response.status >= 500) {
+            if (retries > 0) {
+              await new Promise(res => setTimeout(res, delay));
+              return callGeminiAPI(systemPrompt, userPrompt, schema, retries - 1, delay * 2);
+            } else {
+              throw new Error(`API error after retries: ${response.status} ${response.statusText}`);
+            }
+          } else {
+            const errorBody = await response.text();
+            throw new Error(`API Error: ${response.status} ${response.statusText}. Body: ${errorBody}`);
+          }
+        }
+
+        const result = await response.json();
+        
+        if (result.candidates && result.candidates[0].content && result.candidates[0].content.parts[0].text) {
+          const jsonText = result.candidates[0].content.parts[0].text;
+          return JSON.parse(jsonText);
+        } else {
+          console.error("Invalid AI response structure:", result);
+          throw new Error("AI response was missing the expected content.");
+        }
+
+      } catch (error) {
+        console.error("Fetch/Retry Error:", error);
+        throw error; 
+      }
+    }
+  </script>
+</body>
+</html>
+
+
+
+
